@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:QEmuXlorer.App.ViewModels"
+             x:Class="QEmuXlorer.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <StackPanel Spacing="16" Margin="16">
+    <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"/>
+
+    <StackPanel Spacing="8">
+      <TextBlock Text="Appearance" FontWeight="SemiBold"/>
+      <CheckBox Content="Dark Theme" IsChecked="{Binding IsDarkTheme}"/>
+      <Button Content="Save Settings" Command="{Binding SaveThemeCommand}" HorizontalAlignment="Left"/>
+    </StackPanel>
+  </StackPanel>
+</UserControl>
