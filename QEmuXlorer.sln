@@ -1,10 +1,7 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35312.102
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322 stable
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A0000010-0000-0000-0000-000000000010}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A0000011-0000-0000-0000-000000000011}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QEmuXlorer.Models", "src\QEmuXlorer.Models\QEmuXlorer.Models.csproj", "{A0000001-0000-0000-0000-000000000001}"
@@ -44,14 +41,10 @@ Global
 		{A0000005-0000-0000-0000-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0000005-0000-0000-0000-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{A0000001-0000-0000-0000-000000000001} = {A0000010-0000-0000-0000-000000000010}
-		{A0000002-0000-0000-0000-000000000002} = {A0000010-0000-0000-0000-000000000010}
-		{A0000003-0000-0000-0000-000000000003} = {A0000010-0000-0000-0000-000000000010}
-		{A0000004-0000-0000-0000-000000000004} = {A0000010-0000-0000-0000-000000000010}
-		{A0000005-0000-0000-0000-000000000005} = {A0000011-0000-0000-0000-000000000011}
-	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A0000005-0000-0000-0000-000000000005} = {A0000011-0000-0000-0000-000000000011}
 	EndGlobalSection
 EndGlobal

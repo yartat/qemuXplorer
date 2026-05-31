@@ -1,14 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>QEmuXlorer.Core.Tests</AssemblyName>
     <RootNamespace>QEmuXlorer.Core.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+    
   <ItemGroup>
     <ProjectReference Include="..\..\src\QEmuXlorer.Core\QEmuXlorer.Core.csproj" />
     <ProjectReference Include="..\..\src\QEmuXlorer.Models\QEmuXlorer.Models.csproj" />
   </ItemGroup>
+    
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
@@ -23,4 +25,5 @@
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="FluentAssertions" />
   </ItemGroup>
+    
 </Project>

@@ -1,4 +1,5 @@
 # QEmuXlorer QEMU Frontend
+[![QEMU Explorer](https://github.com/yartat/qemuXplorer/actions/workflows/dotnet-desktop.yml/badge.svg)](https://github.com/yartat/qemuXplorer/actions/workflows/dotnet-desktop.yml)
 
 A cross-platform UI shell for QEMU built with .NET 10 and Avalonia UI 11.
 
