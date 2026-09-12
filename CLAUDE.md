@@ -102,7 +102,7 @@ Rules when touching it:
 - Arguments are returned as a `IReadOnlyList<string>` and passed to
   `ProcessStartInfo.ArgumentList`, so there is **no shell and no quoting**. Never build a
   single space-joined command string for execution.
-  (`VmEditViewModel.UpdateGeneratedCommandAsync` joins them for *display* only.)
+  (`VmEditViewModel.RefreshPreview` joins them for *display* only.)
 - `AddDisplay` emits **exactly one** of `-display` / `-vnc` / `-spice`. Keep it that way: the
   earlier version emitted `-display vnc` alongside `-vnc`, and a second `-display` whenever GL
   was enabled.
@@ -146,6 +146,20 @@ immediately.
 
 ## UI conventions
 
+- **The look is the "Control Room" design: dark, dense, keyboard-first.** All colour and font
+  values live in `Theme/ControlRoom.axaml` as `App*` resources (`AppCanvas`, `AppRail`,
+  `AppSurface`, `AppBorder`, `AppText`, `AppTextDim`, `AppAccent`, `AppOk`, `AppDanger`, …),
+  defined twice under `ThemeDictionaries` for Dark and Light. **Never hard-code a colour in a
+  view** — reference the token with `{DynamicResource AppX}`, and add a token in both variants
+  if one is missing. Monospace uses `{DynamicResource AppMonoFont}`, a fallback chain rather
+  than a vendored font.
+- Reusable style classes, applied with `Classes="…"`: `pageTitle`, `section` (the small spaced
+  capitals above a group), `mono`, `dim`, `nav` (rail items), `tool` (toolbar buttons),
+  `primary` (the one amber button per screen), `danger`.
+- The theme include must stay **last** in `App.axaml`'s `Styles`, after `FluentTheme` and the
+  DataGrid theme, or Fluent's defaults win.
+- Dark is the default: `App.axaml` sets `RequestedThemeVariant="Dark"`, the seed row is `Dark`,
+  and `ApplyPersistedTheme` only switches to Light on an explicit stored "Light".
 - MVVM via CommunityToolkit source generators: `[ObservableProperty]` on a `_camelCase` field,
   `[RelayCommand]` on a method. Bind to the generated `PascalCase` property and `XxxCommand`.
   ViewModels must be `partial` and derive from `ViewModelBase`.
@@ -174,6 +188,12 @@ immediately.
   the ViewModel's `CloseRequested` event. It has no `DataTemplate`.
 - The theme is applied at startup by `App.ApplyPersistedTheme` from the `Theme` app setting,
   and again by `SettingsViewModel` when the checkbox changes.
+- The rail's active item comes from `MainWindowViewModel.IsDashboard` / `IsVirtualMachines` /
+  `IsQemuInstallations` / `IsSettings`, recomputed in `OnCurrentPageChanged`. `CurrentPage`
+  stays the single source of truth — do not add a parallel selected-index field.
+- `VmEditViewModel` keeps the launch-command preview live by caching the default
+  `QemuInstallation` in `LoadVmAsync` and rebuilding synchronously in `RefreshPreview` on every
+  property change. Keep `RefreshPreview` free of I/O: it runs on each keystroke.
 
 ## Tests
 
@@ -235,9 +255,8 @@ plain `dotnet` invocations with `${{ }}` expressions: the previous version used 
   creating and inspecting disk images is not reachable from the UI. It also takes the
   `qemu-img` path as a parameter, and nothing in the app resolves that path — discovery only
   looks for `qemu-system-x86_64`.
-- Nav buttons in `MainWindow.axaml` have no active/selected state.
-- `VirtualMachinesViewModel.AddVmAsync` persists a VM named "New VM" immediately instead of
-  opening the editor first, and deleting a running VM does not stop it.
+- `VirtualMachinesViewModel.AddVmAsync` persists a machine named "New machine" immediately
+  instead of opening the editor first, and deleting a running machine does not stop it.
 - `VirtualMachine.Disks`/`NetworkAdapters`/`UsbDevices` are `List<T>` on the entity but are
   copied into `ObservableCollection<T>` in the editor; the two are reconciled on save.
 - `QemuProcessManager` tracks processes in memory only. Nothing survives an app restart, so a

@@ -3,7 +3,7 @@
              xmlns:vm="using:QemuXplorer.App.ViewModels"
              xmlns:views="using:QemuXplorer.App.Views"
              x:Class="QemuXplorer.App.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark">
 
   <Application.DataTemplates>
     <DataTemplate DataType="vm:DashboardViewModel">
@@ -23,5 +23,7 @@
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+    <!-- Must come last: it overrides Fluent's defaults. -->
+    <StyleInclude Source="avares://QemuXplorer/Theme/ControlRoom.axaml"/>
   </Application.Styles>
 </Application>

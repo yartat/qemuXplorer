@@ -65,9 +65,10 @@ public class App : Application
         var settings = _services!.GetRequiredService<IAppSettingRepository>();
         var theme = settings.GetValueAsync("Theme").GetAwaiter().GetResult();
 
-        RequestedThemeVariant = string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase)
-            ? ThemeVariant.Dark
-            : ThemeVariant.Light;
+        // Dark unless explicitly set to Light: the Control Room design is dark-first.
+        RequestedThemeVariant = string.Equals(theme, "Light", StringComparison.OrdinalIgnoreCase)
+            ? ThemeVariant.Light
+            : ThemeVariant.Dark;
     }
 
     private static void ConfigureServices(IServiceCollection services)

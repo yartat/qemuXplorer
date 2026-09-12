@@ -18,26 +18,40 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    public string CountSummary => VirtualMachines.Count == 1
+        ? "1 defined"
+        : $"{VirtualMachines.Count} defined";
+
     public VirtualMachinesViewModel(VirtualMachineService vmService)
     {
         _vmService = vmService;
+        VirtualMachines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CountSummary));
     }
 
     [RelayCommand]
     private async Task LoadAsync()
     {
+        var selectedId = SelectedVm?.Id;
+
         var vms = await _vmService.GetAllAsync();
         VirtualMachines.Clear();
         foreach (var vm in vms) VirtualMachines.Add(vm);
+
+        SelectedVm = selectedId is null
+            ? null
+            : VirtualMachines.FirstOrDefault(v => v.Id == selectedId);
+
+        StatusMessage = $"{VirtualMachines.Count} machine(s) loaded";
     }
 
     [RelayCommand]
     private async Task AddVmAsync()
     {
-        var vm = new VirtualMachine { Name = "New VM" };
+        var vm = new VirtualMachine { Name = "New machine" };
         await _vmService.AddAsync(vm);
         VirtualMachines.Add(vm);
         SelectedVm = vm;
+        StatusMessage = $"Created {vm.Name}";
     }
 
     [RelayCommand]
@@ -47,6 +61,7 @@ public partial class VirtualMachinesViewModel : ViewModelBase
         await _vmService.DeleteAsync(vm.Id);
         VirtualMachines.Remove(vm);
         if (SelectedVm == vm) SelectedVm = null;
+        StatusMessage = $"Deleted {vm.Name}";
     }
 
     [RelayCommand]
@@ -56,6 +71,7 @@ public partial class VirtualMachinesViewModel : ViewModelBase
         var clone = await _vmService.CloneAsync(vm.Id, $"{vm.Name} (Clone)");
         VirtualMachines.Add(clone);
         SelectedVm = clone;
+        StatusMessage = $"Cloned to {clone.Name}";
     }
 
     [RelayCommand]
@@ -65,11 +81,11 @@ public partial class VirtualMachinesViewModel : ViewModelBase
         try
         {
             await _vmService.StartAsync(vm.Id);
-            StatusMessage = $"Started: {vm.Name}";
+            StatusMessage = $"Started {vm.Name}";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error starting VM: {ex.Message}";
+            StatusMessage = $"Could not start {vm.Name}: {ex.Message}";
         }
     }
 
@@ -78,6 +94,6 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     {
         if (vm is null) return;
         await _vmService.StopAsync(vm.Id);
-        StatusMessage = $"Stopped: {vm.Name}";
+        StatusMessage = $"Stopped {vm.Name}";
     }
 }

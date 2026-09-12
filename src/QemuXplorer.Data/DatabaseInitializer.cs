@@ -16,7 +16,7 @@ public static class DatabaseInitializer
         if (!await db.AppSettings.AnyAsync(ct))
         {
             db.AppSettings.AddRange(
-                new AppSetting { Key = "Theme", Value = "Light", Description = "Application color theme (Light / Dark)" },
+                new AppSetting { Key = "Theme", Value = "Dark", Description = "Application color theme (Light / Dark)" },
                 new AppSetting { Key = "DefaultQemuPath", Value = string.Empty, Description = "Default directory containing QEMU binaries" },
                 new AppSetting { Key = "AutoStartMonitor", Value = "false", Description = "Automatically connect to QEMU monitor on VM start" }
             );

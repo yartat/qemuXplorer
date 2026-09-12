@@ -26,6 +26,21 @@ public partial class MainWindowViewModel : ViewModelBase
         _currentPage = dashboard;
     }
 
+    // The rail highlights the active page from these; there is no selection state to keep
+    // in sync because CurrentPage is the single source of truth.
+    public bool IsDashboard => CurrentPage == _dashboard;
+    public bool IsVirtualMachines => CurrentPage == _virtualMachines;
+    public bool IsQemuInstallations => CurrentPage == _qemuInstallations;
+    public bool IsSettings => CurrentPage == _settings;
+
+    partial void OnCurrentPageChanged(ViewModelBase value)
+    {
+        OnPropertyChanged(nameof(IsDashboard));
+        OnPropertyChanged(nameof(IsVirtualMachines));
+        OnPropertyChanged(nameof(IsQemuInstallations));
+        OnPropertyChanged(nameof(IsSettings));
+    }
+
     [RelayCommand]
     private void NavigateToDashboard() => CurrentPage = _dashboard;
 

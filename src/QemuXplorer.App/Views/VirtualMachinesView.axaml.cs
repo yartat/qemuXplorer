@@ -28,7 +28,7 @@ public partial class VirtualMachinesView : UserControl
         if (sp is null) return;
 
         var editVm = sp.GetRequiredService<VmEditViewModel>();
-        editVm.LoadVm(selected);
+        await editVm.LoadVmAsync(selected);
 
         var window = new VmEditView { DataContext = editVm };
         editVm.CloseRequested += (_, _) => window.Close();

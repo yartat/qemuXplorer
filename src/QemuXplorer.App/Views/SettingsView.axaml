@@ -2,15 +2,65 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:QemuXplorer.App.ViewModels"
              x:Class="QemuXplorer.App.Views.SettingsView"
-             x:DataType="vm:SettingsViewModel">
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource AppCanvas}">
 
-  <StackPanel Spacing="16" Margin="16">
-    <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold"/>
+  <Grid RowDefinitions="Auto,*,Auto">
 
-    <StackPanel Spacing="8">
-      <TextBlock Text="Appearance" FontWeight="SemiBold"/>
-      <CheckBox Content="Dark Theme" IsChecked="{Binding IsDarkTheme}"/>
-      <Button Content="Save Settings" Command="{Binding SaveThemeCommand}" HorizontalAlignment="Left"/>
-    </StackPanel>
-  </StackPanel>
+    <Border Grid.Row="0"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="46" Padding="16,0">
+      <TextBlock Classes="pageTitle" Text="Settings"/>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="16,20" Spacing="24" MaxWidth="640" HorizontalAlignment="Left">
+
+        <StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="APPEARANCE"/>
+          <CheckBox Content="Dark theme" IsChecked="{Binding IsDarkTheme}"/>
+          <TextBlock Classes="mono" FontSize="11"
+                     Text="Applied immediately and remembered for the next launch."/>
+        </StackPanel>
+
+        <StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="DEFAULTS"/>
+          <StackPanel Spacing="5">
+            <Label Content="QEMU binary directory"/>
+            <TextBox Classes="mono" Width="360" HorizontalAlignment="Left"
+                     Text="{Binding DefaultQemuPath}"
+                     PlaceholderText="Used when no installation is marked default"/>
+          </StackPanel>
+          <CheckBox Content="Attach to the QEMU monitor when a machine starts"
+                    IsChecked="{Binding AutoStartMonitor}"/>
+        </StackPanel>
+
+        <StackPanel Spacing="12">
+          <TextBlock Classes="section" Text="STORAGE"/>
+          <Border Background="{DynamicResource AppSurface}"
+                  BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="14,13">
+            <StackPanel Spacing="3">
+              <TextBlock Classes="mono" FontSize="12" Text="{Binding DatabasePath}"/>
+              <TextBlock Classes="mono" FontSize="11"
+                         Text="Machine definitions, installations and settings"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <Button Classes="primary" Content="Save settings" HorizontalAlignment="Left"
+                Command="{Binding SaveCommand}"/>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Height="26" Padding="16,0">
+      <TextBlock Classes="mono" FontSize="10.5" VerticalAlignment="Center"
+                 Text="{Binding StatusMessage}"/>
+    </Border>
+
+  </Grid>
 </UserControl>

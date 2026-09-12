@@ -4,169 +4,254 @@
         xmlns:enums="using:QemuXplorer.Models.Enums"
         x:Class="QemuXplorer.App.Views.VmEditView"
         x:DataType="vm:VmEditViewModel"
-        Title="Edit Virtual Machine"
-        Width="760" Height="620"
-        MinWidth="640" MinHeight="500"
-        WindowStartupLocation="CenterOwner">
+        Title="Edit machine"
+        Width="900" Height="720"
+        MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppCanvas}"
+        Foreground="{DynamicResource AppText}"
+        FontSize="13">
 
-  <Grid RowDefinitions="*,Auto" Margin="16">
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
 
-    <TabControl Grid.Row="0">
+    <!-- Title -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="48" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+        <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="pageTitle"/>
+        <TextBlock Grid.Column="1" Classes="mono" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Text="{Binding ArchSummary}"/>
+        <Button Grid.Column="3" Classes="tool" Content="Cancel" Margin="0,0,8,0"
+                VerticalAlignment="Center" Command="{Binding CancelCommand}"/>
+        <Button Grid.Column="4" Classes="primary" Content="Save"
+                VerticalAlignment="Center" Command="{Binding SaveCommand}"/>
+      </Grid>
+    </Border>
 
-      <!-- General tab -->
+    <!-- Tabs -->
+    <TabControl Grid.Row="1" Padding="0" Margin="8,4,8,0">
+
       <TabItem Header="General">
         <ScrollViewer>
-          <StackPanel Spacing="12" Margin="8">
-            <Label Content="Name"/>
-            <TextBox Text="{Binding Name}"/>
-            <Label Content="Description"/>
-            <TextBox Text="{Binding Description}" Height="60" AcceptsReturn="True"/>
-            <Label Content="Architecture"/>
-            <ComboBox ItemsSource="{x:Static vm:VmEditViewModel.Architectures}"
-                      SelectedItem="{Binding Architecture}" HorizontalAlignment="Stretch"/>
-            <Label Content="Machine Type"/>
-            <TextBox Text="{Binding MachineType}"/>
-            <CheckBox Content="Mark as Template" IsChecked="{Binding IsTemplate}"/>
+          <StackPanel Margin="12,16" Spacing="20">
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="section" Text="IDENTITY"/>
+              <StackPanel Spacing="5">
+                <Label Content="Name"/>
+                <TextBox Text="{Binding Name}" Width="320" HorizontalAlignment="Left"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Description"/>
+                <TextBox Text="{Binding Description}" Width="460" HorizontalAlignment="Left"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <StackPanel Spacing="5">
+                  <Label Content="Architecture"/>
+                  <ComboBox Width="170" ItemsSource="{Binding Architectures}"
+                            SelectedItem="{Binding Architecture}"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Machine type"/>
+                  <TextBox Classes="mono" Width="130" Text="{Binding MachineType}"/>
+                </StackPanel>
+              </StackPanel>
+              <CheckBox Content="This is a template" IsChecked="{Binding IsTemplate}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="section" Text="PROCESSOR"/>
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <StackPanel Spacing="5">
+                  <Label Content="Model"/>
+                  <TextBox Classes="mono" Width="150" Text="{Binding CpuModel}"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Sockets"/>
+                  <NumericUpDown Width="90" Minimum="1" Maximum="64" Increment="1"
+                                 Value="{Binding CpuSockets}" FormatString="0"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Cores"/>
+                  <NumericUpDown Width="90" Minimum="1" Maximum="256" Increment="1"
+                                 Value="{Binding CpuCores}" FormatString="0"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Threads"/>
+                  <NumericUpDown Width="90" Minimum="1" Maximum="8" Increment="1"
+                                 Value="{Binding CpuThreads}" FormatString="0"/>
+                </StackPanel>
+                <TextBlock Classes="mono" VerticalAlignment="Bottom" Margin="0,0,0,8"
+                           Foreground="{DynamicResource AppOk}"
+                           Text="{Binding VcpuSummary}"/>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="section" Text="MEMORY"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Width="140" Minimum="64" Maximum="1048576" Increment="256"
+                               Value="{Binding MemorySizeMB}" FormatString="0"/>
+                <TextBlock Classes="mono" VerticalAlignment="Center" Text="MB"/>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="section" Text="ACCELERATION"/>
+              <StackPanel Orientation="Horizontal" Spacing="16">
+                <CheckBox Content="kvm"  IsChecked="{Binding EnableKvm}"/>
+                <CheckBox Content="hvf"  IsChecked="{Binding EnableHvf}"/>
+                <CheckBox Content="whpx" IsChecked="{Binding EnableWhpx}"/>
+                <CheckBox Content="tcg fallback" IsChecked="{Binding FallbackToTcg}"/>
+              </StackPanel>
+            </StackPanel>
+
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
-      <!-- Hardware tab -->
-      <TabItem Header="Hardware">
-        <ScrollViewer>
-          <StackPanel Spacing="12" Margin="8">
-            <TextBlock Text="CPU" FontWeight="SemiBold" FontSize="15"/>
-            <Label Content="CPU Model"/>
-            <TextBox Text="{Binding CpuModel}"/>
-            <Label Content="vCPUs"/>
-            <NumericUpDown Value="{Binding CpuCount}" Minimum="1" Maximum="256"/>
-            <Label Content="Sockets"/>
-            <NumericUpDown Value="{Binding CpuSockets}" Minimum="1" Maximum="16"/>
-            <Label Content="Cores per Socket"/>
-            <NumericUpDown Value="{Binding CpuCores}" Minimum="1" Maximum="128"/>
-            <Label Content="Threads per Core"/>
-            <NumericUpDown Value="{Binding CpuThreads}" Minimum="1" Maximum="4"/>
-
-            <Separator Margin="0,8"/>
-            <TextBlock Text="Memory" FontWeight="SemiBold" FontSize="15"/>
-            <Label Content="RAM (MB)"/>
-            <NumericUpDown Value="{Binding MemorySizeMB}" Minimum="128" Maximum="1048576" Increment="512"/>
+      <TabItem Header="Storage">
+        <Grid RowDefinitions="*,Auto" Margin="12,12">
+          <DataGrid Grid.Row="0" ItemsSource="{Binding Disks}"
+                    SelectedItem="{Binding SelectedDisk}"
+                    AutoGenerateColumns="False" HeadersVisibility="Column">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="FILE" Binding="{Binding FilePath}" Width="*"/>
+              <DataGridTemplateColumn Header="FORMAT" Width="110">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding Format}"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="INTERFACE" Width="110">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding Interface}"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridCheckBoxColumn Header="BOOT"  Binding="{Binding IsBootDevice}" Width="70"/>
+              <DataGridCheckBoxColumn Header="CDROM" Binding="{Binding IsCdRom}" Width="70"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,10,0,0">
+            <Button Classes="tool" Content="Add disk" Command="{Binding AddDiskCommand}"/>
+            <Button Classes="tool danger" Content="Remove" Command="{Binding RemoveDiskCommand}"
+                    CommandParameter="{Binding SelectedDisk}"/>
           </StackPanel>
-        </ScrollViewer>
+        </Grid>
       </TabItem>
 
-      <!-- Accelerator tab -->
-      <TabItem Header="Accelerator">
-        <StackPanel Spacing="12" Margin="8">
-          <CheckBox Content="Enable KVM (Linux)"  IsChecked="{Binding EnableKvm}"/>
-          <CheckBox Content="Enable HVF (macOS)"  IsChecked="{Binding EnableHvf}"/>
-          <CheckBox Content="Enable WHPX (Windows)" IsChecked="{Binding EnableWhpx}"/>
-          <CheckBox Content="Fallback to TCG (software)"  IsChecked="{Binding FallbackToTcg}"/>
+      <TabItem Header="Network">
+        <Grid RowDefinitions="*,Auto" Margin="12,12">
+          <DataGrid Grid.Row="0" ItemsSource="{Binding NetworkAdapters}"
+                    SelectedItem="{Binding SelectedNetworkAdapter}"
+                    AutoGenerateColumns="False" HeadersVisibility="Column">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="BACKEND" Width="130">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding BackendType}"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="MODEL" Width="150">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding Model}"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="MAC" Binding="{Binding MacAddress}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,10,0,0">
+            <Button Classes="tool" Content="Add adapter" Command="{Binding AddNetworkAdapterCommand}"/>
+            <Button Classes="tool danger" Content="Remove" Command="{Binding RemoveNetworkAdapterCommand}"
+                    CommandParameter="{Binding SelectedNetworkAdapter}"/>
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Display">
+        <StackPanel Margin="12,16" Spacing="16">
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Spacing="5">
+              <Label Content="Display"/>
+              <ComboBox Width="170" ItemsSource="{Binding DisplayTypes}" SelectedItem="{Binding DisplayType}"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="VGA"/>
+              <ComboBox Width="150" ItemsSource="{Binding VgaTypes}" SelectedItem="{Binding VgaType}"/>
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Spacing="5">
+              <Label Content="VNC port"/>
+              <NumericUpDown Width="130" Minimum="0" Maximum="65535" Increment="1"
+                             Value="{Binding VncPort}" FormatString="0"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="SPICE port"/>
+              <NumericUpDown Width="130" Minimum="0" Maximum="65535" Increment="1"
+                             Value="{Binding SpicePort}" FormatString="0"/>
+            </StackPanel>
+          </StackPanel>
+          <CheckBox Content="Start full screen" IsChecked="{Binding IsFullscreen}"/>
         </StackPanel>
       </TabItem>
 
-      <!-- Storage tab -->
-      <TabItem Header="Storage">
-        <Grid RowDefinitions="*,Auto">
-          <DataGrid Grid.Row="0"
-                    ItemsSource="{Binding Disks}"
-                    SelectedItem="{Binding SelectedDisk}"
-                    AutoGenerateColumns="False">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="File Path"  Binding="{Binding FilePath}"   Width="*"/>
-              <DataGridTextColumn Header="Format"    Binding="{Binding Format}"     Width="90"/>
-              <DataGridTextColumn Header="Interface" Binding="{Binding Interface}"  Width="90"/>
-              <DataGridCheckBoxColumn Header="Boot"   Binding="{Binding IsBootDevice}" Width="55"/>
-              <DataGridCheckBoxColumn Header="CD-ROM" Binding="{Binding IsCdRom}"      Width="70"/>
-            </DataGrid.Columns>
-          </DataGrid>
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-            <Button Content="Add Disk"    Command="{Binding AddDiskCommand}"/>
-            <Button Content="Remove Disk" Command="{Binding RemoveDiskCommand}" CommandParameter="{Binding SelectedDisk}"/>
-          </StackPanel>
-        </Grid>
-      </TabItem>
-
-      <!-- Network tab -->
-      <TabItem Header="Network">
-        <Grid RowDefinitions="*,Auto">
-          <DataGrid Grid.Row="0"
-                    ItemsSource="{Binding NetworkAdapters}"
-                    SelectedItem="{Binding SelectedNetworkAdapter}"
-                    AutoGenerateColumns="False">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="Backend"     Binding="{Binding BackendType}" Width="100"/>
-              <DataGridTextColumn Header="Model"       Binding="{Binding Model}"       Width="140"/>
-              <DataGridTextColumn Header="MAC Address" Binding="{Binding MacAddress}"  Width="*"/>
-            </DataGrid.Columns>
-          </DataGrid>
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-            <Button Content="Add Adapter"    Command="{Binding AddNetworkAdapterCommand}"/>
-            <Button Content="Remove Adapter" Command="{Binding RemoveNetworkAdapterCommand}" CommandParameter="{Binding SelectedNetworkAdapter}"/>
-          </StackPanel>
-        </Grid>
-      </TabItem>
-
-      <!-- Display tab -->
-      <TabItem Header="Display">
-        <ScrollViewer>
-          <StackPanel Spacing="12" Margin="8">
-            <Label Content="Display Type"/>
-            <ComboBox ItemsSource="{x:Static vm:VmEditViewModel.DisplayTypes}"
-                      SelectedItem="{Binding DisplayType}" HorizontalAlignment="Stretch"/>
-            <Label Content="VGA Model"/>
-            <ComboBox ItemsSource="{x:Static vm:VmEditViewModel.VgaTypes}"
-                      SelectedItem="{Binding VgaType}" HorizontalAlignment="Stretch"/>
-            <Label Content="VNC Port"/>
-            <NumericUpDown Value="{Binding VncPort}" Minimum="1" Maximum="65535"/>
-            <Label Content="SPICE Port"/>
-            <NumericUpDown Value="{Binding SpicePort}" Minimum="1" Maximum="65535"/>
-            <CheckBox Content="Fullscreen" IsChecked="{Binding IsFullscreen}"/>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- USB tab -->
       <TabItem Header="USB">
-        <Grid RowDefinitions="*,Auto">
-          <DataGrid Grid.Row="0"
-                    ItemsSource="{Binding UsbDevices}"
+        <Grid RowDefinitions="*,Auto" Margin="12,12">
+          <DataGrid Grid.Row="0" ItemsSource="{Binding UsbDevices}"
                     SelectedItem="{Binding SelectedUsbDevice}"
-                    AutoGenerateColumns="False">
+                    AutoGenerateColumns="False" HeadersVisibility="Column">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Vendor ID"  Binding="{Binding VendorId}"  Width="90"/>
-              <DataGridTextColumn Header="Product ID" Binding="{Binding ProductId}" Width="90"/>
-              <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
-              <DataGridCheckBoxColumn Header="Passthrough" Binding="{Binding IsPassthrough}" Width="90"/>
+              <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*"/>
+              <DataGridTextColumn Header="VENDOR" Binding="{Binding VendorId}" Width="110">
+                <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+              </DataGridTextColumn>
+              <DataGridTextColumn Header="PRODUCT" Binding="{Binding ProductId}" Width="110">
+                <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+              </DataGridTextColumn>
+              <DataGridCheckBoxColumn Header="PASSTHROUGH" Binding="{Binding IsPassthrough}" Width="130"/>
             </DataGrid.Columns>
           </DataGrid>
-          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-            <Button Content="Add USB Device"    Command="{Binding AddUsbDeviceCommand}"/>
-            <Button Content="Remove USB Device" Command="{Binding RemoveUsbDeviceCommand}" CommandParameter="{Binding SelectedUsbDevice}"/>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,10,0,0">
+            <Button Classes="tool" Content="Add device" Command="{Binding AddUsbDeviceCommand}"/>
+            <Button Classes="tool danger" Content="Remove" Command="{Binding RemoveUsbDeviceCommand}"
+                    CommandParameter="{Binding SelectedUsbDevice}"/>
           </StackPanel>
         </Grid>
       </TabItem>
 
-      <!-- Advanced tab -->
       <TabItem Header="Advanced">
-        <StackPanel Spacing="12" Margin="8">
-          <Label Content="Extra QEMU Arguments"/>
-          <TextBox Text="{Binding ExtraArguments}" Height="80" AcceptsReturn="True" FontFamily="Monospace"/>
-          <Button Content="Preview Command" Command="{Binding UpdateGeneratedCommandCommand}" HorizontalAlignment="Left"/>
-          <Label Content="Generated Command"/>
-          <TextBox Text="{Binding GeneratedCommand}" IsReadOnly="True" Height="120"
-                   AcceptsReturn="True" FontFamily="Monospace" TextWrapping="Wrap"/>
+        <StackPanel Margin="12,16" Spacing="10">
+          <TextBlock Classes="section" Text="EXTRA ARGUMENTS"/>
+          <TextBox Classes="mono" Text="{Binding ExtraArguments}"
+                   AcceptsReturn="True" Height="90" TextWrapping="Wrap"
+                   PlaceholderText="Appended verbatim. Quoted values are kept together."/>
         </StackPanel>
       </TabItem>
 
     </TabControl>
 
-    <!-- Footer buttons -->
-    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right"
-                Spacing="8" Margin="0,12,0,0">
-      <Button Content="Save"   Command="{Binding SaveCommand}" Classes="accent"/>
-      <Button Content="Cancel" Command="{Binding CancelCommand}"/>
-    </StackPanel>
+    <!-- Live command -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorderStrong}" BorderThickness="0,1,0,0"
+            Height="30" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Column="0" Classes="section" Text="LAUNCH COMMAND" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="1" Classes="mono" FontSize="10" Margin="10,0,0,0"
+                   VerticalAlignment="Center" Text="updates as you edit"/>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="3" Background="{DynamicResource AppSurfaceAlt}" Padding="16,10" Height="120">
+      <ScrollViewer>
+        <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}"
+                             FontSize="11.5" LineHeight="19"
+                             TextWrapping="Wrap"
+                             Foreground="{DynamicResource AppText}"
+                             Text="{Binding GeneratedCommand}"/>
+      </ScrollViewer>
+    </Border>
 
   </Grid>
 </Window>

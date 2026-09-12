@@ -73,6 +73,15 @@ public partial class VmEditViewModel : ViewModelBase
 
     public bool IsNew => _isNew;
 
+    // Resolved once per dialog so the preview can refresh on every keystroke without
+    // hitting the database.
+    private QemuInstallation? _qemu;
+    private bool _suppressPreview;
+
+    public string ArchSummary => $"{Architecture} · {MachineType}";
+
+    public string VcpuSummary => $"= {CpuSockets * CpuCores * CpuThreads} vCPU";
+
     public event EventHandler? CloseRequested;
 
     public VmEditViewModel(VirtualMachineService vmService, IQemuArgumentBuilder argBuilder)
@@ -80,12 +89,33 @@ public partial class VmEditViewModel : ViewModelBase
         _vmService = vmService;
         _argBuilder = argBuilder;
         _vm = new VirtualMachine();
+
+        PropertyChanged += (_, e) =>
+        {
+            if (_suppressPreview) return;
+            if (e.PropertyName is nameof(GeneratedCommand) or nameof(ArchSummary) or nameof(VcpuSummary)) return;
+
+            if (e.PropertyName is nameof(Architecture) or nameof(MachineType))
+                OnPropertyChanged(nameof(ArchSummary));
+            if (e.PropertyName is nameof(CpuSockets) or nameof(CpuCores) or nameof(CpuThreads))
+                OnPropertyChanged(nameof(VcpuSummary));
+
+            RefreshPreview();
+        };
+    }
+
+    public async Task LoadVmAsync(VirtualMachine vm, CancellationToken ct = default)
+    {
+        _qemu = await _vmService.GetDefaultInstallationAsync(ct);
+        LoadVm(vm);
+        RefreshPreview();
     }
 
     public void LoadVm(VirtualMachine vm)
     {
         _vm = vm;
         _isNew = false;
+        _suppressPreview = true;
 
         Name = vm.Name;
         Description = vm.Description;
@@ -120,6 +150,10 @@ public partial class VmEditViewModel : ViewModelBase
         foreach (var n in vm.NetworkAdapters) NetworkAdapters.Add(n);
         UsbDevices.Clear();
         foreach (var u in vm.UsbDevices) UsbDevices.Add(u);
+
+        _suppressPreview = false;
+        OnPropertyChanged(nameof(ArchSummary));
+        OnPropertyChanged(nameof(VcpuSummary));
     }
 
     private void ApplyToVm()
@@ -214,24 +248,23 @@ public partial class VmEditViewModel : ViewModelBase
         if (device is not null) UsbDevices.Remove(device);
     }
 
-    [RelayCommand]
-    private async Task UpdateGeneratedCommandAsync()
+    /// <summary>
+    /// Rebuilds the preview from the in-memory edits. Synchronous on purpose: it runs on every
+    /// property change, so it must not touch the database.
+    /// </summary>
+    private void RefreshPreview()
     {
-        ApplyToVm();
-
-        // Preview against the installation the VM would actually launch with, rather than a
-        // hard-coded path that is wrong on every platform but one.
-        var qemu = await _vmService.GetDefaultInstallationAsync();
-        if (qemu is null)
+        if (_qemu is null)
         {
             GeneratedCommand = "No default QEMU installation is configured. "
-                             + "Set one on the QEMU Installations page to preview the command.";
+                             + "Set one on the Installations page to preview the command.";
             return;
         }
 
         try
         {
-            var launchArgs = _argBuilder.Build(_vm, qemu);
+            ApplyToVm();
+            var launchArgs = _argBuilder.Build(_vm, _qemu);
             GeneratedCommand = string.Join(" ", new[] { launchArgs.Binary }
                 .Concat(launchArgs.Arguments)
                 .Select(a => a.Contains(' ') ? $"\"{a}\"" : a));

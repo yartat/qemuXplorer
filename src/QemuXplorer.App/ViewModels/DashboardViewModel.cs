@@ -26,6 +26,15 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    [ObservableProperty]
+    private int _runningCount;
+
+    [ObservableProperty]
+    private int _definedCount;
+
+    [ObservableProperty]
+    private string _allocatedMemory = "0M";
+
     public DashboardViewModel(VirtualMachineService vmService)
     {
         _vmService = vmService;
@@ -39,10 +48,12 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     private async Task RefreshAsync()
     {
-        var names = (await _vmService.GetAllAsync()).ToDictionary(v => v.Id, v => v.Name);
+        var all = await _vmService.GetAllAsync();
+        var names = all.ToDictionary(v => v.Id, v => v.Name);
+        var running = _vmService.GetRunningVms();
 
         RunningVms.Clear();
-        foreach (var vm in _vmService.GetRunningVms())
+        foreach (var vm in running)
         {
             RunningVms.Add(new RunningVmRow(
                 vm.VmId,
@@ -52,10 +63,23 @@ public partial class DashboardViewModel : ViewModelBase
                 vm.IsMonitorConnected));
         }
 
+        RunningCount = RunningVms.Count;
+        DefinedCount = all.Count;
+
+        // Only running machines actually hold memory.
+        var runningIds = running.Select(r => r.VmId).ToHashSet();
+        var totalMb = all.Where(v => runningIds.Contains(v.Id)).Sum(v => v.Memory.SizeMB);
+        AllocatedMemory = FormatMemory(totalMb);
+
         StatusMessage = RunningVms.Count == 0
-            ? "No virtual machines are running."
-            : $"{RunningVms.Count} virtual machine(s) running.";
+            ? "no machines running"
+            : $"{RunningVms.Count} running";
     }
+
+    private static string FormatMemory(long megabytes)
+        => megabytes >= 1024
+            ? $"{megabytes / 1024.0:0.#}G"
+            : $"{megabytes}M";
 
     [RelayCommand]
     private async Task StopVmAsync(RunningVmRow? row)
@@ -63,6 +87,15 @@ public partial class DashboardViewModel : ViewModelBase
         if (row is null) return;
 
         await _vmService.StopAsync(row.VmId);
+        await RefreshAsync();
+    }
+
+    [RelayCommand]
+    private async Task KillVmAsync(RunningVmRow? row)
+    {
+        if (row is null) return;
+
+        await _vmService.StopAsync(row.VmId, force: true);
         await RefreshAsync();
     }
 }

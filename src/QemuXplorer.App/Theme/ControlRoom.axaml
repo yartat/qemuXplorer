@@ -1,0 +1,232 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppCanvas"      Color="#14171c"/>
+          <SolidColorBrush x:Key="AppRail"        Color="#101319"/>
+          <SolidColorBrush x:Key="AppSurface"     Color="#1a1e26"/>
+          <SolidColorBrush x:Key="AppSurfaceAlt"  Color="#171b22"/>
+          <SolidColorBrush x:Key="AppRowSelected" Color="#1b2029"/>
+          <SolidColorBrush x:Key="AppBorder"      Color="#262c36"/>
+          <SolidColorBrush x:Key="AppBorderStrong" Color="#2e3540"/>
+          <SolidColorBrush x:Key="AppText"        Color="#dfe4ec"/>
+          <SolidColorBrush x:Key="AppTextBright"  Color="#ffffff"/>
+          <SolidColorBrush x:Key="AppTextDim"     Color="#8b95a5"/>
+          <SolidColorBrush x:Key="AppTextFaint"   Color="#6e7a8b"/>
+          <SolidColorBrush x:Key="AppAccent"      Color="#f5a524"/>
+          <SolidColorBrush x:Key="AppOnAccent"    Color="#14171c"/>
+          <SolidColorBrush x:Key="AppOk"          Color="#4ade80"/>
+          <SolidColorBrush x:Key="AppDanger"      Color="#f87171"/>
+          <SolidColorBrush x:Key="AppNoticeBg"    Color="#1e1a12"/>
+          <SolidColorBrush x:Key="AppNoticeBorder" Color="#3a3320"/>
+          <SolidColorBrush x:Key="AppNoticeText"  Color="#e8d5ae"/>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppCanvas"      Color="#f7f7f9"/>
+          <SolidColorBrush x:Key="AppRail"        Color="#ebebf0"/>
+          <SolidColorBrush x:Key="AppSurface"     Color="#ffffff"/>
+          <SolidColorBrush x:Key="AppSurfaceAlt"  Color="#f1f1f5"/>
+          <SolidColorBrush x:Key="AppRowSelected" Color="#e7eaf1"/>
+          <SolidColorBrush x:Key="AppBorder"      Color="#dcdce3"/>
+          <SolidColorBrush x:Key="AppBorderStrong" Color="#c6c6d0"/>
+          <SolidColorBrush x:Key="AppText"        Color="#14171c"/>
+          <SolidColorBrush x:Key="AppTextBright"  Color="#000000"/>
+          <SolidColorBrush x:Key="AppTextDim"     Color="#5c6472"/>
+          <SolidColorBrush x:Key="AppTextFaint"   Color="#7b8492"/>
+          <SolidColorBrush x:Key="AppAccent"      Color="#a96c05"/>
+          <SolidColorBrush x:Key="AppOnAccent"    Color="#ffffff"/>
+          <SolidColorBrush x:Key="AppOk"          Color="#1f7a46"/>
+          <SolidColorBrush x:Key="AppDanger"      Color="#c23b3b"/>
+          <SolidColorBrush x:Key="AppNoticeBg"    Color="#fdf8ec"/>
+          <SolidColorBrush x:Key="AppNoticeBorder" Color="#ead9b4"/>
+          <SolidColorBrush x:Key="AppNoticeText"  Color="#7a5c19"/>
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- First available family wins; covers Windows, macOS and common Linux installs. -->
+      <FontFamily x:Key="AppMonoFont">Cascadia Mono,Consolas,SF Mono,Menlo,DejaVu Sans Mono,monospace</FontFamily>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Section label above a group of fields -->
+  <Style Selector="TextBlock.section">
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextFaint}"/>
+    <Setter Property="LetterSpacing" Value="1.4"/>
+  </Style>
+
+  <Style Selector="TextBlock.pageTitle">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="{DynamicResource AppMonoFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+  </Style>
+
+  <Style Selector="TextBlock.dim">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+  </Style>
+
+  <!-- Navigation items in the left rail -->
+  <Style Selector="ToggleButton.nav">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+    <Setter Property="FontSize" Value="13"/>
+  </Style>
+  <Style Selector="ToggleButton.nav:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppSurfaceAlt}"/>
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource AppText}"/>
+  </Style>
+  <Style Selector="ToggleButton.nav:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppRowSelected}"/>
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource AppTextBright}"/>
+  </Style>
+  <Style Selector="ToggleButton.nav:checked">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextBright}"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+  </Style>
+
+  <!-- Toolbar buttons -->
+  <Style Selector="Button.tool">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="10,4"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+  </Style>
+  <Style Selector="Button.tool:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
+    <Setter Property="TextBlock.Foreground" Value="{DynamicResource AppText}"/>
+  </Style>
+  <Style Selector="Button.tool:disabled /template/ ContentPresenter">
+    <Setter Property="Opacity" Value="0.4"/>
+  </Style>
+
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppOnAccent}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+    <Setter Property="Opacity" Value="0.88"/>
+  </Style>
+
+  <Style Selector="Button.danger">
+    <Setter Property="Foreground" Value="{DynamicResource AppDanger}"/>
+  </Style>
+
+  <!-- Inputs -->
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="8,5"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    <Setter Property="MinHeight" Value="0"/>
+  </Style>
+
+  <Style Selector="TextBox.mono">
+    <Setter Property="FontFamily" Value="{DynamicResource AppMonoFont}"/>
+    <Setter Property="FontSize" Value="11.5"/>
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource AppSurface}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrong}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    <Setter Property="MinHeight" Value="0"/>
+  </Style>
+
+  <Style Selector="NumericUpDown">
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="MinHeight" Value="0"/>
+  </Style>
+
+  <Style Selector="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="MinHeight" Value="0"/>
+  </Style>
+
+  <Style Selector="Label">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Padding" Value="0,0,0,2"/>
+  </Style>
+
+  <!-- Dense data grid -->
+  <Style Selector="DataGrid">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+    <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource AppBorder}"/>
+    <Setter Property="RowHeight" Value="32"/>
+    <Setter Property="FontSize" Value="12.5"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppText}"/>
+  </Style>
+
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextFaint}"/>
+    <Setter Property="FontSize" Value="10.5"/>
+    <Setter Property="LetterSpacing" Value="1"/>
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Padding" Value="8,0"/>
+    <Setter Property="SeparatorBrush" Value="Transparent"/>
+  </Style>
+
+  <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+    <Setter Property="Fill" Value="{DynamicResource AppRowSelected}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="DataGridCell">
+    <Setter Property="Padding" Value="8,0"/>
+    <Setter Property="FontSize" Value="12.5"/>
+  </Style>
+
+  <Style Selector="TabControl">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppTextDim}"/>
+  </Style>
+  <Style Selector="TabItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextBright}"/>
+  </Style>
+
+</Styles>
