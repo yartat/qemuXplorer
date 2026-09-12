@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+    a { color: #f5a524; } a:hover { color: #ffbd55; }
+  </style>
+</helmet>
+
+<div style="width: 1200px; height: 780px; display: flex; background: #14171c; color: #dfe4ec; font-size: 13px; overflow: hidden;">
+
+  <div style="width: 190px; flex-shrink: 0; background: #101319; border-right: 1px solid #262c36; display: flex; flex-direction: column;">
+    <div style="padding: 18px 16px 20px 16px;">
+      <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em;">QEMUXPLORER</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 1px; padding: 0 8px;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 4px; background: #1c2029; color: #ffffff; box-shadow: inset 2px 0 0 #f5a524;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span style="font-weight: 500;">Dashboard</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 4px; color: #97a1b0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg>
+        <span>Machines</span><span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6e7a8b;">12</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 4px; color: #97a1b0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Installations</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 4px; color: #97a1b0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg><span>Settings</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;">
+
+    <div style="height: 46px; flex-shrink: 0; border-bottom: 1px solid #262c36; display: flex; align-items: center; gap: 10px; padding: 0 16px;">
+      <span style="font-size: 14px; font-weight: 600;">Dashboard</span>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 7px; border: 1px solid #2a303a; border-radius: 4px; padding: 5px 11px; color: #97a1b0; font-size: 12px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></svg>Refresh
+      </div>
+    </div>
+
+    <!-- counters -->
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px;">
+      <div style="background: #1a1e26; border: 1px solid #262c36; border-radius: 5px; padding: 14px 16px; display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-size: 10px; letter-spacing: 0.1em; color: #6e7a8b;">RUNNING</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500; color: #4ade80;">3</span>
+      </div>
+      <div style="background: #1a1e26; border: 1px solid #262c36; border-radius: 5px; padding: 14px 16px; display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-size: 10px; letter-spacing: 0.1em; color: #6e7a8b;">DEFINED</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500;">12</span>
+      </div>
+      <div style="background: #1a1e26; border: 1px solid #262c36; border-radius: 5px; padding: 14px 16px; display: flex; flex-direction: column; gap: 5px;">
+        <span style="font-size: 10px; letter-spacing: 0.1em; color: #6e7a8b;">ALLOCATED MEMORY</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500;">22.5<span style="font-size: 14px; color: #8b95a5;">G</span></span>
+      </div>
+    </div>
+
+    <div style="padding: 0 16px 8px 16px; font-size: 10px; letter-spacing: 0.1em; color: #6e7a8b;">RUNNING MACHINES</div>
+
+    <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr) 96px 84px 104px 132px; padding: 0 16px; height: 28px; align-items: center; border-bottom: 1px solid #262c36; font-size: 10.5px; letter-spacing: 0.08em; color: #6e7a8b;">
+      <div></div><div>NAME</div><div>PID</div><div>ARCH</div><div>UPTIME</div><div></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr) 96px 84px 104px 132px; padding: 0 16px; height: 40px; align-items: center; border-bottom: 1px solid #1c2129; font-size: 12.5px;">
+      <div><span style="display: block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade8066;"></span></div>
+      <div style="font-weight: 500; color: #ffffff;">alpine-builder</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">48213</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #8b95a5;">x86_64</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">2h 14m</div>
+      <div style="display: flex; gap: 6px; justify-content: flex-end;">
+        <div style="border: 1px solid #2a303a; border-radius: 4px; padding: 3px 9px; color: #97a1b0; font-size: 11.5px;">Stop</div>
+        <div style="border: 1px solid #4a2a2a; border-radius: 4px; padding: 3px 9px; color: #f87171; font-size: 11.5px;">Kill</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr) 96px 84px 104px 132px; padding: 0 16px; height: 40px; align-items: center; border-bottom: 1px solid #1c2129; font-size: 12.5px;">
+      <div><span style="display: block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade8066;"></span></div>
+      <div style="color: #dfe4ec;">win11-test</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">51904</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #8b95a5;">x86_64</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">41m</div>
+      <div style="display: flex; gap: 6px; justify-content: flex-end;">
+        <div style="border: 1px solid #2a303a; border-radius: 4px; padding: 3px 9px; color: #97a1b0; font-size: 11.5px;">Stop</div>
+        <div style="border: 1px solid #4a2a2a; border-radius: 4px; padding: 3px 9px; color: #f87171; font-size: 11.5px;">Kill</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr) 96px 84px 104px 132px; padding: 0 16px; height: 40px; align-items: center; border-bottom: 1px solid #1c2129; font-size: 12.5px;">
+      <div><span style="display: block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade8066;"></span></div>
+      <div style="color: #dfe4ec;">debian-arm64</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">52771</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #8b95a5;">aarch64</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; color: #b6c0cd;">6m</div>
+      <div style="display: flex; gap: 6px; justify-content: flex-end;">
+        <div style="border: 1px solid #2a303a; border-radius: 4px; padding: 3px 9px; color: #97a1b0; font-size: 11.5px;">Stop</div>
+        <div style="border: 1px solid #4a2a2a; border-radius: 4px; padding: 3px 9px; color: #f87171; font-size: 11.5px;">Kill</div>
+      </div>
+    </div>
+
+    <div style="margin-top: auto; height: 26px; flex-shrink: 0; border-top: 1px solid #262c36; background: #101319; display: flex; align-items: center; gap: 16px; padding: 0 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6e7a8b;">
+      <span style="color: #4ade80;">● 3 running</span>
+      <span style="margin-left: auto;">tracked in-process · not restored after restart</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

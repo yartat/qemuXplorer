@@ -1,0 +1,44 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Control Room" },
+    { "id": "page-2", "name": "Not chosen" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",                 "page": "page-1", "x": 0,    "y": 0,    "w": 1200, "h": 780, "title": "Machines" },
+    { "file": "ControlRoomEditor.dc.html",    "page": "page-1", "x": 1280, "y": 0,    "w": 1200, "h": 780, "title": "Machine editor" },
+    { "file": "ControlRoomDashboard.dc.html", "page": "page-1", "x": 2560, "y": 0,    "w": 1200, "h": 780, "title": "Dashboard" },
+    { "file": "ControlRoomInstalls.dc.html",  "page": "page-1", "x": 3840, "y": 0,    "w": 1200, "h": 780, "title": "Installations" },
+    { "file": "ControlRoomSettings.dc.html",  "page": "page-1", "x": 5120, "y": 0,    "w": 1200, "h": 780, "title": "Settings" },
+
+    { "file": "WorkbenchVms.dc.html",         "page": "page-2", "x": 0,    "y": 0,    "w": 1200, "h": 780, "title": "B · Machines" },
+    { "file": "WorkbenchEditor.dc.html",      "page": "page-2", "x": 1280, "y": 0,    "w": 1200, "h": 780, "title": "B · Editor" },
+    { "file": "WorkbenchDashboard.dc.html",   "page": "page-2", "x": 2560, "y": 0,    "w": 1200, "h": 780, "title": "B · Dashboard" },
+    { "file": "WorkbenchInstalls.dc.html",    "page": "page-2", "x": 3840, "y": 0,    "w": 1200, "h": 780, "title": "B · Installations" },
+    { "file": "WorkbenchSettings.dc.html",    "page": "page-2", "x": 5120, "y": 0,    "w": 1200, "h": 780, "title": "B · Settings" },
+
+    { "file": "LauncherVms.dc.html",          "page": "page-2", "x": 0,    "y": 920,  "w": 1200, "h": 780, "title": "C · Machines" },
+    { "file": "LauncherEditor.dc.html",       "page": "page-2", "x": 1280, "y": 920,  "w": 1200, "h": 780, "title": "C · Editor" },
+    { "file": "LauncherDashboard.dc.html",    "page": "page-2", "x": 2560, "y": 920,  "w": 1200, "h": 780, "title": "C · Dashboard" },
+    { "file": "LauncherInstalls.dc.html",     "page": "page-2", "x": 3840, "y": 920,  "w": 1200, "h": 780, "title": "C · Installations" },
+    { "file": "LauncherSettings.dc.html",     "page": "page-2", "x": 5120, "y": 920,  "w": 1200, "h": 780, "title": "C · Settings" }
+  ],
+  "annotations": [
+    {
+      "id": "chosen",
+      "page": "page-1",
+      "x": -1180,
+      "y": -60,
+      "w": 940,
+      "text": "CONTROL ROOM — the chosen direction\n\nDark, dense, keyboard-first. A tight table with one row per machine, status LEDs, monospace for every technical value, a persistent status bar, and the launch command docked under the editor.\n\nEvery value shown is a field the app already stores. There are no CPU or I/O graphs because nothing in the code measures them.\n\nTwo real limitations are surfaced rather than hidden: auto-detect only finds qemu-system-x86_64, and running machines are not restored after a restart."
+    },
+    {
+      "id": "not-chosen",
+      "page": "page-2",
+      "x": -1180,
+      "y": -60,
+      "w": 940,
+      "text": "NOT CHOSEN — kept for reference\n\nB · Workbench (top row): light, calm, master–detail, command preview always visible.\n\nC · Launcher (bottom row): bold card grid, one-click start, editor as a stepped sheet.\n\nWorth raiding for parts even though the direction went elsewhere: B's always-visible command preview and C's architecture picker with its native / emulated labelling both solve problems the Control Room screens solve less directly."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
