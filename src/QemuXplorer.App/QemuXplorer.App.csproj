@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>QemuXplorer</AssemblyName>
+    <RootNamespace>QemuXplorer.App</RootNamespace>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+    
+  <ItemGroup>
+    <ProjectReference Include="..\QemuXplorer.Models\QemuXplorer.Models.csproj" />
+    <ProjectReference Include="..\QemuXplorer.Data\QemuXplorer.Data.csproj" />
+    <ProjectReference Include="..\QemuXplorer.Core\QemuXplorer.Core.csproj" />
+  </ItemGroup>
+    
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+    
+</Project>

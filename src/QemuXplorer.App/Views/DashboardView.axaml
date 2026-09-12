@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:QemuXplorer.App.ViewModels"
+             x:Class="QemuXplorer.App.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="16">
+
+    <TextBlock Grid.Row="0" Text="Dashboard" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
+
+    <DataGrid Grid.Row="1"
+              ItemsSource="{Binding RunningVms}"
+              SelectedItem="{Binding SelectedRunningVm}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Name"    Binding="{Binding Name}"                Width="*"/>
+        <DataGridTextColumn Header="PID"     Binding="{Binding ProcessId}"           Width="80"/>
+        <DataGridTextColumn Header="Started" Binding="{Binding StartedAt}"           Width="180"/>
+        <DataGridTextColumn Header="Monitor" Binding="{Binding IsMonitorConnected}"  Width="100"/>
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+      <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+      <Button Content="Stop Selected"
+              Command="{Binding StopVmCommand}"
+              CommandParameter="{Binding SelectedRunningVm}"
+              IsEnabled="{Binding SelectedRunningVm, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+    </StackPanel>
+
+    <TextBlock Grid.Row="3"
+               Text="{Binding StatusMessage}"
+               Opacity="0.7"
+               Margin="0,12,0,0"/>
+
+  </Grid>
+</UserControl>

@@ -8,42 +8,39 @@ on:
 
 jobs:
   build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
     strategy:
+      fail-fast: false
       matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
         configuration: [ Release ]
 
-    runs-on: [windows-latest, ubuntu-latest, macos-latest]
-
     env:
-      Solution_Name: QEmuXlorer.sln
-      Test_Project_Path: QEmuXlorer.Core.Tests.csproj
+      SOLUTION: QemuXplorer.sln
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
-    # Install the .NET Core workload
-    - name: Install .NET Core
+    - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
 
-    # Restore the application to populate the obj folder with RuntimeIdentifiers
-    - name: Restore the application
-      run: dotnet restore $env:Solution_Name -c $env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
 
-    # Publish the application to populate the obj folder with RuntimeIdentifiers
-    - name: Publish the application
-      run: dotnet publish $env:Solution_Name -c $env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Restore
+      run: dotnet restore ${{ env.SOLUTION }}
 
-    # Run tests
-    - name: Run tests
-      run: dotnet test $env:Solution_Name -c $env:Configuration --no-build
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Build
+      run: dotnet build ${{ env.SOLUTION }} -c ${{ matrix.configuration }} --no-restore
+
+    - name: Test
+      run: dotnet test ${{ env.SOLUTION }} -c ${{ matrix.configuration }} --no-build

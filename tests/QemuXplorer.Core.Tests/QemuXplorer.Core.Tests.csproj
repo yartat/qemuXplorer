@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>QemuXplorer.Core.Tests</AssemblyName>
+    <RootNamespace>QemuXplorer.Core.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+    
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\QemuXplorer.Core\QemuXplorer.Core.csproj" />
+    <ProjectReference Include="..\..\src\QemuXplorer.Models\QemuXplorer.Models.csproj" />
+  </ItemGroup>
+    
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+    
+</Project>

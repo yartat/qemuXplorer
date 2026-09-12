@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>      
+    <AssemblyName>QemuXplorer.Models</AssemblyName>
+    <RootNamespace>QemuXplorer.Models</RootNamespace>
+  </PropertyGroup>
+    
+</Project>
