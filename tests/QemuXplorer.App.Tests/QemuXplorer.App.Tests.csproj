@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>QemuXplorer.App.Tests</AssemblyName>
+    <RootNamespace>QemuXplorer.App.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- xunit v3 test projects are self-hosting executables. -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\QemuXplorer.App\QemuXplorer.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

@@ -30,6 +30,7 @@ QemuXplorer.App     ← Avalonia UI: Views (.axaml) + ViewModels + DI compositio
                      References all three.
 tests/QemuXplorer.Core.Tests ← project-references Core + Models (Data comes in transitively
                      through Core, so Data types are usable without a direct reference).
+tests/QemuXplorer.App.Tests  ← headless Avalonia tests. References App.
 ```
 
 Dependencies flow one way. Do not make Models or Data reference Core or App.
@@ -46,7 +47,8 @@ dotnet test  QemuXplorer.sln
 dotnet run --project src/QemuXplorer.App
 ```
 
-The full solution builds clean with zero warnings — keep it that way.
+The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
+solution runs both test projects: 24 argument-builder tests and 8 headless UI tests.
 
 ## Package management
 
@@ -147,6 +149,11 @@ immediately.
 - MVVM via CommunityToolkit source generators: `[ObservableProperty]` on a `_camelCase` field,
   `[RelayCommand]` on a method. Bind to the generated `PascalCase` property and `XxxCommand`.
   ViewModels must be `partial` and derive from `ViewModelBase`.
+- **Every code-behind must call `InitializeComponent()` in its constructor.** Omitting it
+  compiles fine, raises no warning and throws nothing at runtime — the compiled XAML is simply
+  never applied and the control renders as an empty box. `MainWindow` shipped as
+  `public partial class MainWindow : Window { }` and the whole shell was blank.
+  `ViewXamlLoadingTests` now guards this for every view.
 - `AvaloniaUseCompiledBindingsByDefault` is `true`, so every `.axaml` with bindings needs an
   `x:DataType`. A missing one is a compile error, not a silent runtime failure.
 - Navigation is view-model-first: `MainWindowViewModel.CurrentPage` is rendered by a
@@ -170,17 +177,40 @@ immediately.
 
 ## Tests
 
-xUnit + FluentAssertions, mirroring the source layout under
+FluentAssertions throughout, mirroring the source layout under
 `tests/<Project>.Tests/<Folder>/<Type>Tests.cs`. Naming is
 `Method_Scenario_ExpectedOutcome`, and the subject under test is a field named `_sut`.
 
-Only `QemuXplorer.Core` has a test project, and every test in it targets
-`QemuArgumentBuilder`. Anything you add to Core — especially pure logic — should come with
-tests.
+**The two test projects are on different xUnit majors, and this is deliberate:**
+
+| Project | xUnit | Covers |
+|---|---|---|
+| `QemuXplorer.Core.Tests` | v2 (`xunit` 2.9) | `QemuArgumentBuilder` |
+| `QemuXplorer.App.Tests`  | v3 (`xunit.v3`)  | View XAML loading, headless |
+
+`Avalonia.Headless.XUnit` depends on `xunit.v3.extensibility.core`, so the App tests cannot
+use v2. Do not "unify" the versions by downgrading the App tests — that breaks headless
+testing. `dotnet test` on the solution runs both. A v3 project is a self-hosting executable,
+hence its `<OutputType>Exe</OutputType>`.
+
+### Headless UI tests
+
+`ViewXamlLoadingTests` constructs every `ContentControl` in the App assembly — discovered by
+reflection, so a new view is covered the moment it exists — and asserts `Content` is non-null.
+That catches a view whose constructor never calls `InitializeComponent()`: the compiled XAML
+is then never applied and the control renders as an empty box, with nothing failing at build
+time. `MainWindow` shipped exactly that way and the entire shell was blank.
+
+`TestAppBuilder` hosts a bare `HeadlessTestApp`, **not** QemuXplorer's `App`. The real one
+builds the DI container and runs EF migrations against `~/.qemu_explorer` on startup, and a
+test run must never touch the user's database. Keep it that way if you add fixtures.
+
+Use `[AvaloniaFact]` / `[AvaloniaTheory]`, never plain `[Fact]`, for anything touching
+Avalonia types — the Avalonia variants marshal the test onto the UI thread.
 
 Two packages are wired up but unused, so reach for them rather than adding a dependency:
 
-- **NSubstitute** is referenced by the test project but no test uses it yet. Every collaborator
+- **NSubstitute** is referenced by `Core.Tests` but no test uses it yet. Every collaborator
   behind the argument builder is already an interface (`IQemuProcessManager`,
   `IQemuArgumentBuilder`, the three repositories), so `VirtualMachineService` is testable today.
 - **`Microsoft.EntityFrameworkCore.InMemory`** is declared in `Directory.Packages.props` but

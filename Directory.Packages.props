@@ -30,6 +30,10 @@
     <PackageVersion Include="coverlet.collector"              Version="10.0.*" />
     <PackageVersion Include="NSubstitute"                     Version="5.3.0" />
     <PackageVersion Include="FluentAssertions"                Version="8.10.0" />
+    <!-- Headless UI testing. Avalonia.Headless.XUnit targets xunit v3, so the App test
+         project uses v3 while QemuXplorer.Core.Tests stays on v2. -->
+    <PackageVersion Include="xunit.v3"                        Version="3.2.*" />
+    <PackageVersion Include="Avalonia.Headless.XUnit"         Version="12.1.*" />
   </ItemGroup>
 
 </Project>
