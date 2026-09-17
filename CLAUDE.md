@@ -48,7 +48,8 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 24 argument-builder tests and 8 headless UI tests.
+solution runs both test projects: 52 in Core.Tests (argument builder, machine catalog) and
+17 headless UI tests.
 
 ## Package management
 
@@ -110,6 +111,41 @@ Rules when touching it:
   `-device nvme,drive=driveN`; without the second half the drive is attached to nothing.
 - Add a test for any new flag. Existing tests assert on the presence of a flag or a substring
   of its value, using FluentAssertions.
+
+## Machine types and their architectures
+
+`MachineType` (127 members) is **generated**, not hand-written: `tools/dump-machine-types.py`
+parses `qemu-system-<arch> -M help` from a real QEMU install. Do not add members by hand — point
+the script at a QEMU build and regenerate:
+
+```bash
+python tools/dump-machine-types.py "/c/Program Files/qemu" > src/QemuXplorer.Models/Enums/MachineType.cs
+```
+
+Three facts drive the design:
+
+- **The relation is many-to-many.** 96 of the 127 machines are offered by more than one
+  architecture — `virt` by aarch64/arm/riscv64/riscv32, `none` by all eleven. A single
+  `Display.GroupName` string cannot express this, so `MachineAttribute` carries a
+  `GuestArchitecture[]` instead. `[Display]` keeps the human name and description.
+- **QEMU names are not valid C# identifiers** (`ast2500-evb`, `40p`, `b-l475e-iot01a`), so
+  `MachineAttribute.QemuName` is the authority for what goes on the command line. Never derive
+  the QEMU name from the enum member.
+- **`VirtualMachine.MachineType` stays a `string`.** QEMU also accepts versioned variants
+  (`pc-q35-9.2`) that the enum deliberately omits, and a different QEMU build may offer machines
+  this list has never heard of. An enum column would make those unusable and would need a
+  migration; the string needs neither.
+
+`MachineCatalog` reflects over the enum once and answers lookups from memory: `ForArchitecture`,
+`DefaultFor`, `Find`, `IsValidFor`. **`Find` returning null means "not catalogued", not
+"invalid"** — treat it as unverifiable, never as an error.
+
+In the editor, changing architecture refilters the picker and replaces a machine the new
+emulator cannot run. Loading a saved machine does **not** auto-correct: it shows a warning
+instead, because silently rewriting stored data on open hides the problem.
+
+The list is a snapshot of one build. Reading `-M help` from the selected installation at runtime
+would be strictly more correct and is the natural next step.
 
 ## Dependency injection
 

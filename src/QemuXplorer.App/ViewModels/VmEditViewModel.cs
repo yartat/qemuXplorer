@@ -3,6 +3,7 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using QemuXplorer.Core.Services;
+using QemuXplorer.Models;
 using QemuXplorer.Models.Entities;
 using QemuXplorer.Models.Enums;
 
@@ -80,6 +81,55 @@ public partial class VmEditViewModel : ViewModelBase
 
     public string ArchSummary => $"{Architecture} · {MachineType}";
 
+    /// <summary>Machines the selected architecture's emulator accepts. Refilters on change.</summary>
+    public ObservableCollection<MachineTypeInfo> MachineTypes { get; } = [];
+
+    /// <summary>
+    /// The picker's selection. Null whenever <see cref="MachineType"/> holds something the
+    /// catalog does not know — a versioned variant such as pc-q35-9.2, or a machine from a QEMU
+    /// build we have no list for. Setting it writes the QEMU name through.
+    /// </summary>
+    public MachineTypeInfo? SelectedMachineType
+    {
+        get => MachineCatalog.Find(MachineType);
+        set
+        {
+            if (value is not null && value.QemuName != MachineType)
+                MachineType = value.QemuName;
+        }
+    }
+
+    /// <summary>Set when MachineType is not a machine this architecture is known to accept.</summary>
+    public bool HasUnknownMachineType => !MachineCatalog.IsValidFor(MachineType, Architecture);
+
+    public string MachineTypeWarning => MachineCatalog.Find(MachineType) is null
+        ? $"\"{MachineType}\" is not in the catalog. It may still be valid — versioned names such "
+          + "as pc-q35-9.2 are accepted by QEMU but deliberately not listed."
+        : $"\"{MachineType}\" is not offered by the {Architecture} emulator.";
+
+    /// <param name="autoCorrect">
+    /// True only when the user changed architecture, where snapping to that architecture's
+    /// default is helpful. False when loading a saved machine: silently rewriting a stored
+    /// value on open would hide the problem instead of showing it.
+    /// </param>
+    private void RebuildMachineTypes(bool autoCorrect)
+    {
+        MachineTypes.Clear();
+        foreach (var machine in MachineCatalog.ForArchitecture(Architecture))
+            MachineTypes.Add(machine);
+
+        if (autoCorrect && !MachineCatalog.IsValidFor(MachineType, Architecture))
+        {
+            var fallback = MachineCatalog.DefaultFor(Architecture);
+            if (fallback is not null)
+                MachineType = fallback.QemuName;
+        }
+
+        OnPropertyChanged(nameof(SelectedMachineType));
+        OnPropertyChanged(nameof(HasUnknownMachineType));
+        OnPropertyChanged(nameof(MachineTypeWarning));
+    }
+
     public string VcpuSummary => $"= {CpuSockets * CpuCores * CpuThreads} vCPU";
 
     public event EventHandler? CloseRequested;
@@ -93,10 +143,24 @@ public partial class VmEditViewModel : ViewModelBase
         PropertyChanged += (_, e) =>
         {
             if (_suppressPreview) return;
-            if (e.PropertyName is nameof(GeneratedCommand) or nameof(ArchSummary) or nameof(VcpuSummary)) return;
+            // Computed properties are raised from here; re-entering for them would rebuild the
+            // preview several times per keystroke.
+            if (e.PropertyName is nameof(GeneratedCommand) or nameof(ArchSummary) or nameof(VcpuSummary)
+                or nameof(SelectedMachineType) or nameof(HasUnknownMachineType) or nameof(MachineTypeWarning))
+                return;
 
             if (e.PropertyName is nameof(Architecture) or nameof(MachineType))
                 OnPropertyChanged(nameof(ArchSummary));
+
+            if (e.PropertyName is nameof(Architecture))
+                RebuildMachineTypes(autoCorrect: true);
+
+            if (e.PropertyName is nameof(MachineType))
+            {
+                OnPropertyChanged(nameof(SelectedMachineType));
+                OnPropertyChanged(nameof(HasUnknownMachineType));
+                OnPropertyChanged(nameof(MachineTypeWarning));
+            }
             if (e.PropertyName is nameof(CpuSockets) or nameof(CpuCores) or nameof(CpuThreads))
                 OnPropertyChanged(nameof(VcpuSummary));
 
@@ -150,6 +214,8 @@ public partial class VmEditViewModel : ViewModelBase
         foreach (var n in vm.NetworkAdapters) NetworkAdapters.Add(n);
         UsbDevices.Clear();
         foreach (var u in vm.UsbDevices) UsbDevices.Add(u);
+
+        RebuildMachineTypes(autoCorrect: false);
 
         _suppressPreview = false;
         OnPropertyChanged(nameof(ArchSummary));

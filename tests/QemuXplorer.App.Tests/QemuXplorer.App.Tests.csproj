@@ -21,6 +21,7 @@
     </PackageReference>
     <PackageReference Include="Avalonia.Headless.XUnit" />
     <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
 </Project>

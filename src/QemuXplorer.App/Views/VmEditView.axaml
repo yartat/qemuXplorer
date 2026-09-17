@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:QemuXplorer.App.ViewModels"
         xmlns:enums="using:QemuXplorer.Models.Enums"
+        xmlns:models="using:QemuXplorer.Models"
         x:Class="QemuXplorer.App.Views.VmEditView"
         x:DataType="vm:VmEditViewModel"
         Title="Edit machine"
@@ -55,9 +56,38 @@
                 </StackPanel>
                 <StackPanel Spacing="5">
                   <Label Content="Machine type"/>
-                  <TextBox Classes="mono" Width="130" Text="{Binding MachineType}"/>
+                  <!-- Filtered to what the selected architecture's emulator actually offers. -->
+                  <ComboBox Width="430"
+                            ItemsSource="{Binding MachineTypes}"
+                            SelectedItem="{Binding SelectedMachineType}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="models:MachineTypeInfo">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Classes="mono" Width="130"
+                                     Foreground="{DynamicResource AppText}"
+                                     Text="{Binding QemuName}"/>
+                          <TextBlock Classes="dim" VerticalAlignment="Center"
+                                     FontSize="12" TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Description}"/>
+                          <TextBlock Classes="dim" VerticalAlignment="Center" FontSize="11"
+                                     Foreground="{DynamicResource AppDanger}"
+                                     Text="deprecated"
+                                     IsVisible="{Binding IsDeprecated}"/>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
                 </StackPanel>
               </StackPanel>
+
+              <!-- A stored machine the catalog cannot vouch for is surfaced, never rewritten. -->
+              <Border Background="{DynamicResource AppNoticeBg}"
+                      BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                      CornerRadius="5" Padding="12,10"
+                      IsVisible="{Binding HasUnknownMachineType}">
+                <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12"
+                           TextWrapping="Wrap" Text="{Binding MachineTypeWarning}"/>
+              </Border>
               <CheckBox Content="This is a template" IsChecked="{Binding IsTemplate}"/>
             </StackPanel>
 
