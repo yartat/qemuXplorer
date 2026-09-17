@@ -9,6 +9,7 @@ public partial class VirtualMachinesView : UserControl
     public VirtualMachinesView()
     {
         InitializeComponent();
+        vmDataGrid.DoubleTapped += OnEditClicked;
     }
 
     protected override async void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)

@@ -37,8 +37,8 @@
         <DataGridTextColumn Header="BINARY DIRECTORY" Binding="{Binding BinaryDirectory}" Width="*">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="PLATFORM" Binding="{Binding Platform}" Width="110"/>
-        <DataGridTextColumn Header="DEFAULT" Binding="{Binding IsDefault}" Width="90"/>
+        <DataGridTextColumn Header="PLATFORM" Binding="{Binding Platform}" Width="120"/>
+        <DataGridTextColumn Header="DEFAULT" Binding="{Binding IsDefault}" Width="110"/>
       </DataGrid.Columns>
     </DataGrid>
 

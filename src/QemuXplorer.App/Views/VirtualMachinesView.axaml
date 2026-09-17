@@ -42,6 +42,7 @@
 
     <!-- Table -->
     <DataGrid Grid.Row="2"
+              Name="vmDataGrid"
               ItemsSource="{Binding VirtualMachines}"
               SelectedItem="{Binding SelectedVm}"
               IsReadOnly="True"
@@ -53,19 +54,19 @@
         <DataGridTextColumn Header="ARCH"    Binding="{Binding Architecture}" Width="100">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="MACHINE" Binding="{Binding MachineType}" Width="90">
+        <DataGridTextColumn Header="MACHINE" Binding="{Binding MachineType}" Width="110">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="VCPU"    Binding="{Binding Cpu.Count}" Width="70">
+        <DataGridTextColumn Header="VCPU"    Binding="{Binding Cpu.Count}" Width="100">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="MEMORY"  Binding="{Binding Memory.SizeMB, StringFormat='{}{0}M'}" Width="90">
+        <DataGridTextColumn Header="MEMORY"  Binding="{Binding Memory.SizeMB, StringFormat='{}{0}M'}" Width="110">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="DISKS"   Binding="{Binding Disks.Count}" Width="65">
+        <DataGridTextColumn Header="DISKS"   Binding="{Binding Disks.Count}" Width="100">
           <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="TEMPLATE" Binding="{Binding IsTemplate}" Width="90"/>
+        <DataGridTextColumn Header="TEMPLATE" Binding="{Binding IsTemplate}" Width="110"/>
       </DataGrid.Columns>
     </DataGrid>
 
