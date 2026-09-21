@@ -1,17 +1,18 @@
-using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using QemuXplorer.Core.Services;
 using QemuXplorer.Models;
 using QemuXplorer.Models.Entities;
 using QemuXplorer.Models.Enums;
+using System.Collections.ObjectModel;
 
 namespace QemuXplorer.App.ViewModels;
 
 public partial class VmEditViewModel : ViewModelBase
 {
-    private readonly VirtualMachineService _vmService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IQemuArgumentBuilder _argBuilder;
     private VirtualMachine _vm;
 
@@ -134,9 +135,9 @@ public partial class VmEditViewModel : ViewModelBase
 
     public event EventHandler? CloseRequested;
 
-    public VmEditViewModel(VirtualMachineService vmService, IQemuArgumentBuilder argBuilder)
+    public VmEditViewModel(IServiceScopeFactory scopeFactory, IQemuArgumentBuilder argBuilder)
     {
-        _vmService = vmService;
+        _scopeFactory = scopeFactory;
         _argBuilder = argBuilder;
         _vm = new VirtualMachine();
 
@@ -170,7 +171,9 @@ public partial class VmEditViewModel : ViewModelBase
 
     public async Task LoadVmAsync(VirtualMachine vm, CancellationToken ct = default)
     {
-        _qemu = await _vmService.GetDefaultInstallationAsync(ct);
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        _qemu = await vmService.GetDefaultInstallationAsync(ct);
         LoadVm(vm);
         RefreshPreview();
     }
@@ -263,15 +266,18 @@ public partial class VmEditViewModel : ViewModelBase
     private async Task SaveAsync()
     {
         ApplyToVm();
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
         if (_isNew)
         {
-            await _vmService.AddAsync(_vm);
+            await vmService.AddAsync(_vm);
             _isNew = false;
         }
         else
         {
-            await _vmService.UpdateAsync(_vm);
+            await vmService.UpdateAsync(_vm);
         }
+
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 

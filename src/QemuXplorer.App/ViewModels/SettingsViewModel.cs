@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using QemuXplorer.Data;
 using QemuXplorer.Data.Repositories;
 
@@ -11,7 +12,7 @@ public partial class SettingsViewModel : ViewModelBase
     private const string DefaultQemuPathKey = "DefaultQemuPath";
     private const string AutoStartMonitorKey = "AutoStartMonitor";
 
-    private readonly IAppSettingRepository _settings;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     [ObservableProperty]
     private bool _isDarkTheme = true;
@@ -27,26 +28,34 @@ public partial class SettingsViewModel : ViewModelBase
 
     public string DatabasePath => DbPathHelper.GetDatabasePath();
 
-    public SettingsViewModel(IAppSettingRepository settings)
+    public SettingsViewModel(IServiceScopeFactory scopeFactory)
     {
-        _settings = settings;
+        _scopeFactory = scopeFactory;
     }
 
     [RelayCommand]
     private async Task LoadAsync()
     {
-        IsDarkTheme = !string.Equals(await _settings.GetValueAsync(ThemeKey), "Light", StringComparison.OrdinalIgnoreCase);
-        DefaultQemuPath = await _settings.GetValueAsync(DefaultQemuPathKey) ?? string.Empty;
-        AutoStartMonitor = string.Equals(await _settings.GetValueAsync(AutoStartMonitorKey), "true", StringComparison.OrdinalIgnoreCase);
+        using var scope = _scopeFactory.CreateScope();
+        var scopedServices = scope.ServiceProvider;
+        var settings = scopedServices.GetRequiredService<IAppSettingRepository>();
+
+        IsDarkTheme = !string.Equals(await settings.GetValueAsync(ThemeKey), "Light", StringComparison.OrdinalIgnoreCase);
+        DefaultQemuPath = await settings.GetValueAsync(DefaultQemuPathKey) ?? string.Empty;
+        AutoStartMonitor = string.Equals(await settings.GetValueAsync(AutoStartMonitorKey), "true", StringComparison.OrdinalIgnoreCase);
         StatusMessage = string.Empty;
     }
 
     [RelayCommand]
     private async Task SaveAsync()
     {
-        await _settings.SetAsync(ThemeKey, IsDarkTheme ? "Dark" : "Light");
-        await _settings.SetAsync(DefaultQemuPathKey, DefaultQemuPath);
-        await _settings.SetAsync(AutoStartMonitorKey, AutoStartMonitor ? "true" : "false");
+        using var scope = _scopeFactory.CreateScope();
+        var scopedServices = scope.ServiceProvider;
+        var settings = scopedServices.GetRequiredService<IAppSettingRepository>();
+
+        await settings.SetAsync(ThemeKey, IsDarkTheme ? "Dark" : "Light");
+        await settings.SetAsync(DefaultQemuPathKey, DefaultQemuPath);
+        await settings.SetAsync(AutoStartMonitorKey, AutoStartMonitor ? "true" : "false");
         StatusMessage = "settings saved";
     }
 

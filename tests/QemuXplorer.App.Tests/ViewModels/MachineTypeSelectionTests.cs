@@ -1,5 +1,6 @@
 using Avalonia.Headless.XUnit;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using QemuXplorer.App.ViewModels;
 using QemuXplorer.Core.Services;
@@ -20,12 +21,16 @@ public class MachineTypeSelectionTests
     private static VmEditViewModel CreateSut()
     {
         var vmRepo = Substitute.For<IVirtualMachineRepository>();
+        var scopeFactory = Substitute.For<IServiceScopeFactory>();
+        var scope = Substitute.For<IServiceScope>();
+        scopeFactory.CreateScope().Returns(scope);
         var qemuRepo = Substitute.For<IQemuInstallationRepository>();
         var argBuilder = Substitute.For<IQemuArgumentBuilder>();
         var processManager = Substitute.For<IQemuProcessManager>();
 
         var service = new VirtualMachineService(vmRepo, qemuRepo, argBuilder, processManager);
-        return new VmEditViewModel(service, argBuilder);
+        scope.ServiceProvider.GetService(typeof(VirtualMachineService)).Returns(service);
+        return new VmEditViewModel(scopeFactory, argBuilder);
     }
 
     private static VmEditViewModel LoadedWith(GuestArchitecture arch, string machineType)

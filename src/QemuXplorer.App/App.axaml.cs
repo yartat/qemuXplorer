@@ -37,7 +37,7 @@ public class App : Application
             .GetAwaiter()
             .GetResult();
 
-        ApplyPersistedTheme();
+        ApplyPersistedTheme().GetAwaiter().GetResult();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -60,10 +60,12 @@ public class App : Application
     /// <summary>
     /// Without this the saved theme only took effect once the user opened the Settings page.
     /// </summary>
-    private void ApplyPersistedTheme()
+    private async Task ApplyPersistedTheme()
     {
-        var settings = _services!.GetRequiredService<IAppSettingRepository>();
-        var theme = settings.GetValueAsync("Theme").GetAwaiter().GetResult();
+        using var scope = _services!.CreateScope();
+        var scopedServices = scope.ServiceProvider;
+        var settings = scopedServices.GetRequiredService<IAppSettingRepository>();
+        var theme = await settings.GetValueAsync("Theme");
 
         // Dark unless explicitly set to Light: the Control Room design is dark-first.
         RequestedThemeVariant = string.Equals(theme, "Light", StringComparison.OrdinalIgnoreCase)
@@ -80,13 +82,13 @@ public class App : Application
             options.UseSqlite($"Data Source={DbPathHelper.GetDatabasePath()}"));
 
         // Repositories and services are stateless over the factory, so they are safe as singletons.
-        services.AddSingleton<IVirtualMachineRepository, VirtualMachineRepository>();
+        services.AddScoped<IVirtualMachineRepository, VirtualMachineRepository>();
         services.AddSingleton<IQemuInstallationRepository, QemuInstallationRepository>();
-        services.AddSingleton<IAppSettingRepository, AppSettingRepository>();
+        services.AddScoped<IAppSettingRepository, AppSettingRepository>();
 
         services.AddSingleton<IQemuProcessManager, QemuProcessManager>();
         services.AddSingleton<IQemuArgumentBuilder, QemuArgumentBuilder>();
-        services.AddSingleton<VirtualMachineService>();
+        services.AddScoped<VirtualMachineService>();
         services.AddSingleton<QemuDiscoveryService>();
         services.AddSingleton<DiskImageService>();
 

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using QemuXplorer.Core.Services;
 using QemuXplorer.Models.Entities;
 
@@ -8,7 +9,7 @@ namespace QemuXplorer.App.ViewModels;
 
 public partial class VirtualMachinesViewModel : ViewModelBase
 {
-    private readonly VirtualMachineService _vmService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public ObservableCollection<VirtualMachine> VirtualMachines { get; } = [];
 
@@ -22,9 +23,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
         ? "1 defined"
         : $"{VirtualMachines.Count} defined";
 
-    public VirtualMachinesViewModel(VirtualMachineService vmService)
+    public VirtualMachinesViewModel(IServiceScopeFactory scopeFactory)
     {
-        _vmService = vmService;
+        _scopeFactory = scopeFactory;
         VirtualMachines.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CountSummary));
     }
 
@@ -32,8 +33,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task LoadAsync()
     {
         var selectedId = SelectedVm?.Id;
-
-        var vms = await _vmService.GetAllAsync();
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        var vms = await vmService.GetAllAsync();
         VirtualMachines.Clear();
         foreach (var vm in vms) VirtualMachines.Add(vm);
 
@@ -48,7 +50,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task AddVmAsync()
     {
         var vm = new VirtualMachine { Name = "New machine" };
-        await _vmService.AddAsync(vm);
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        await vmService.AddAsync(vm);
         VirtualMachines.Add(vm);
         SelectedVm = vm;
         StatusMessage = $"Created {vm.Name}";
@@ -58,7 +62,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task DeleteVmAsync(VirtualMachine? vm)
     {
         if (vm is null) return;
-        await _vmService.DeleteAsync(vm.Id);
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        await vmService .DeleteAsync(vm.Id);
         VirtualMachines.Remove(vm);
         if (SelectedVm == vm) SelectedVm = null;
         StatusMessage = $"Deleted {vm.Name}";
@@ -68,7 +74,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task CloneVmAsync(VirtualMachine? vm)
     {
         if (vm is null) return;
-        var clone = await _vmService.CloneAsync(vm.Id, $"{vm.Name} (Clone)");
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        var clone = await vmService.CloneAsync(vm.Id, $"{vm.Name} (Clone)");
         VirtualMachines.Add(clone);
         SelectedVm = clone;
         StatusMessage = $"Cloned to {clone.Name}";
@@ -80,7 +88,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
         if (vm is null) return;
         try
         {
-            await _vmService.StartAsync(vm.Id);
+            using var scope = _scopeFactory.CreateScope();
+            var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+            await vmService.StartAsync(vm.Id);
             StatusMessage = $"Started {vm.Name}";
         }
         catch (Exception ex)
@@ -93,7 +103,9 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task StopVmAsync(VirtualMachine? vm)
     {
         if (vm is null) return;
-        await _vmService.StopAsync(vm.Id);
+        using var scope = _scopeFactory.CreateScope();
+        var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
+        await vmService.StopAsync(vm.Id);
         StatusMessage = $"Stopped {vm.Name}";
     }
 }
