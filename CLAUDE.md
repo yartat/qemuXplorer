@@ -48,8 +48,8 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 52 in Core.Tests (argument builder, machine catalog) and
-17 headless UI tests.
+solution runs both test projects: 113 in Core.Tests (argument builder, machine and disk catalogs,
+disk image service) and 58 headless UI tests (view loading, machine picker, disk wizard).
 
 ## Package management
 
@@ -96,10 +96,11 @@ command-line syntax lives. It is the one class with real test coverage
 Rules when touching it:
 
 - Every enum → string conversion goes through the `private static` mapper methods at the
-  bottom of the file (`FormatName`, `InterfaceName`, `CacheName`, …). Adding an enum member
+  bottom of the file (`InterfaceName`, `CacheName`, …). Adding an enum member
   means adding a case there — the `_ =>` fallbacks will otherwise silently pick a default.
 - QEMU driver names are not the enum names. `DiskFormat.Vhd` is `vpc` on the command line and
-  in `qemu-img` output; `DiskImageService` must agree with `FormatName` on this.
+  in `qemu-img` output. Disk format names live in one place, `DiskFormatCatalog.QemuName`, which
+  the builder and `DiskImageService` both use — never re-map them locally.
 - Arguments are returned as a `IReadOnlyList<string>` and passed to
   `ProcessStartInfo.ArgumentList`, so there is **no shell and no quoting**. Never build a
   single space-joined command string for execution.
@@ -146,6 +147,39 @@ instead, because silently rewriting stored data on open hides the problem.
 
 The list is a snapshot of one build. Reading `-M help` from the selected installation at runtime
 would be strictly more correct and is the natural next step.
+
+## Disks and the Add-disk wizard
+
+"Add disk..." in the editor's Storage tab opens `DiskWizardView` (three steps: source, details,
+attach). It produces a `DiskDevice`; creating a new image runs `qemu-img create` first.
+
+- **Sources:** create a new image, use an existing file, or attach over NBD, SSH or iSCSI.
+- **`DiskFormatCatalog`** (Models) is the single description of every format: QEMU driver name,
+  whether `qemu-img` can create it, whether QEMU can only read it, and the `-o` creation options.
+  The option lists came from `qemu-img create -f <fmt> -o help` on QEMU 11.1. Only `bochs`, `cloop`
+  and `dmg` truly cannot be created. `parallels` can (`qemu-img` supports it), but the app
+  deliberately treats it, like the others, as attach-only and read-only.
+- **Read-only formats are forced `readonly=on`** by the argument builder regardless of the flag.
+- **`DiskFormat` is stored as an integer. Only ever append members** — reordering silently
+  re-labels every saved disk. `ExistingMembers_KeepTheirStoredIntegerValues` pins the old six.
+- **Connection data is stored twice on purpose, in two roles.** `DiskDevice.FilePath` holds the URI
+  QEMU consumes (`nbd://`, `ssh://`, `iscsi://`, built by `DiskSourceUri`); `DiskDevice.ConnectionJson`
+  holds the structured pieces (`DiskConnection`: host, port, export, user, remote path, target, LUN,
+  key file) so they stay editable. The wizard writes both together; the builder reads `FilePath`.
+- **Secrets never touch the database or the command line.** A LUKS passphrase is a *file path*
+  in `ConnectionJson`; QEMU gets it through `-object secret,id=secN,file=...`. SSH uses the user's
+  agent and keys. iSCSI CHAP passwords are not supported by the wizard (libiscsi reads
+  `LIBISCSI_CHAP_PASSWORD` from the environment).
+- **Commas in any value are doubled** (`,,`) in both `-drive` and `qemu-img -o`. Without it a path
+  such as `a,readonly=on.img` would inject options.
+- **`qemu-img` comes from the default installation's directory** (`DiskImageService.ResolveQemuImg`).
+  With no default installation the wizard cannot create images and says so.
+- `CreateImageAsync` refuses to overwrite an existing file; `qemu-img create` would do it silently.
+- The wizard probes `qemu-img --help` for the block drivers the build has and **warns** (does not
+  block) when NBD, SSH or iSCSI is missing. The dev machine's Windows QEMU 11.1 has no `iscsi`.
+- `qemu-img info` without `-f` reports a **fixed VHD as `raw`**, because the VHD footer sits at the
+  end. Creation is correct and the app always passes `format=` explicitly, but
+  `DiskImageService.GetImageInfoAsync` probes, so it can misreport such a file.
 
 ## Dependency injection
 
@@ -244,8 +278,9 @@ FluentAssertions throughout, mirroring the source layout under
 | `QemuXplorer.Core.Tests` | v2 (`xunit` 2.9) | `QemuArgumentBuilder` |
 | `QemuXplorer.App.Tests`  | v3 (`xunit.v3`)  | View XAML loading, headless |
 
-`Avalonia.Headless.XUnit` depends on `xunit.v3.extensibility.core`, so the App tests cannot
-use v2. Do not "unify" the versions by downgrading the App tests — that breaks headless
+`Avalonia.Headless.XUnit` depends on `xunit.v3.extensibility.core` 3.x, so the App tests cannot
+use v2 **and `xunit.v3` must stay on `3.2.*`**. Bumping it to 4.x compiles and then fails every
+test at discovery with `MissingMethodException` from `AvaloniaFactDiscoverer`. Do not "unify" the versions by downgrading the App tests — that breaks headless
 testing. `dotnet test` on the solution runs both. A v3 project is a self-hosting executable,
 hence its `<OutputType>Exe</OutputType>`.
 
@@ -287,10 +322,8 @@ plain `dotnet` invocations with `${{ }}` expressions: the previous version used 
   runtime from `IQemuProcessManager.IsRunning`.
 - `QemuDiscoveryService` only probes for `qemu-system-x86_64` in a fixed set of directories;
   other architectures and non-standard install paths are not detected.
-- `DiskImageService` is registered in DI but injected nowhere: no view model calls it, so
-  creating and inspecting disk images is not reachable from the UI. It also takes the
-  `qemu-img` path as a parameter, and nothing in the app resolves that path — discovery only
-  looks for `qemu-system-x86_64`.
+- `DiskImageService.GetImageInfoAsync` is still not called from the UI (the wizard creates and
+  attaches, but nothing inspects an existing image), and it probes the format, see above.
 - `VirtualMachinesViewModel.AddVmAsync` persists a machine named "New machine" immediately
   instead of opening the editor first, and deleting a running machine does not stop it.
 - `VirtualMachine.Disks`/`NetworkAdapters`/`UsbDevices` are `List<T>` on the entity but are

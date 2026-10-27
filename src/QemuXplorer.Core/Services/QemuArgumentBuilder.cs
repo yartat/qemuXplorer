@@ -1,4 +1,5 @@
 using System.Text;
+using QemuXplorer.Models;
 using QemuXplorer.Models.Dtos;
 using QemuXplorer.Models.Entities;
 using QemuXplorer.Models.Enums;
@@ -91,8 +92,20 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
         var isNvme = disk.Interface == DiskInterface.Nvme;
         var driveId = $"drive{disk.Index}";
 
-        var drive = new StringBuilder($"file={disk.FilePath}");
-        drive.Append(",format=").Append(FormatName(disk.Format));
+        // A LUKS passphrase never goes on the command line: it is read from a file through a
+        // secret object that the drive then references by id.
+        var keyFile = DiskConnection.FromJson(disk.ConnectionJson)?.KeySecretFile;
+        var secretId = $"sec{disk.Index}";
+        var hasSecret = disk.Format == DiskFormat.Luks && !string.IsNullOrWhiteSpace(keyFile);
+        if (hasSecret)
+        {
+            args.Add("-object");
+            args.Add($"secret,id={secretId},file={EscapeOption(keyFile!)}");
+        }
+
+        var drive = new StringBuilder($"file={EscapeOption(disk.FilePath)}");
+        drive.Append(",format=").Append(DiskFormatCatalog.QemuName(disk.Format));
+        if (hasSecret) drive.Append(",key-secret=").Append(secretId);
 
         if (isNvme)
             drive.Append(",if=none,id=").Append(driveId);
@@ -101,7 +114,10 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
 
         drive.Append(",cache=").Append(CacheName(disk.CacheMode));
         if (disk.IsCdRom) drive.Append(",media=cdrom");
-        if (disk.IsReadOnly) drive.Append(",readonly=on");
+
+        // bochs, cloop, dmg and parallels cannot be written by QEMU, so asking for them
+        // read-write would only fail at start-up.
+        if (disk.IsReadOnly || DiskFormatCatalog.IsReadOnly(disk.Format)) drive.Append(",readonly=on");
         if (disk.IsSnapshotMode) drive.Append(",snapshot=on");
 
         args.Add("-drive");
@@ -113,6 +129,9 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
             args.Add($"nvme,drive={driveId},serial={driveId}");
         }
     }
+
+    // In QEMU option strings a literal comma is written as two.
+    private static string EscapeOption(string value) => value.Replace(",", ",,");
 
     private static void AddDisplay(List<string> args, DisplayConfig disp)
     {
@@ -205,17 +224,6 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
         };
         return OperatingSystem.IsWindows() ? name + ".exe" : name;
     }
-
-    private static string FormatName(DiskFormat fmt) => fmt switch
-    {
-        DiskFormat.QCow2 => "qcow2",
-        DiskFormat.Raw   => "raw",
-        DiskFormat.Vmdk  => "vmdk",
-        DiskFormat.Vhd   => "vpc",
-        DiskFormat.Vhdx  => "vhdx",
-        DiskFormat.Vdi   => "vdi",
-        _                => "qcow2"
-    };
 
     private static string InterfaceName(DiskInterface iface) => iface switch
     {

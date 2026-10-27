@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Xunit;
 using QemuXplorer.Core.Services;
+using QemuXplorer.Models;
 using QemuXplorer.Models.Entities;
 using QemuXplorer.Models.Enums;
 
@@ -295,5 +296,81 @@ public class QemuArgumentBuilderTests
         var args = _sut.Build(vm, DefaultQemu());
 
         args.Arguments.Should().Contain(a => a.Contains("format=vpc"));
+    }
+
+    [Fact]
+    public void Build_LuksDisk_ReadsThePassphraseFromASecretObject()
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice
+        {
+            FilePath = "/i/enc.luks", Format = DiskFormat.Luks, Index = 0,
+            ConnectionJson = new DiskConnection { KeySecretFile = "/keys/p.txt" }.ToJson()
+        });
+
+        var args = _sut.Build(vm, DefaultQemu()).Arguments;
+
+        args.Should().Contain("secret,id=sec0,file=/keys/p.txt");
+        args.Should().Contain(a => a.Contains("format=luks") && a.Contains("key-secret=sec0"));
+        args.ToList().IndexOf("-object").Should().BeLessThan(args.ToList().IndexOf("-drive"));
+    }
+
+    [Theory]
+    [InlineData(DiskFormat.Bochs)]
+    [InlineData(DiskFormat.Cloop)]
+    [InlineData(DiskFormat.Dmg)]
+    [InlineData(DiskFormat.Parallels)]
+    public void Build_AttachOnlyFormat_IsForcedReadOnly(DiskFormat format)
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice { FilePath = "/i/x.img", Format = format, IsReadOnly = false, Index = 0 });
+
+        _sut.Build(vm, DefaultQemu()).Arguments
+            .Should().Contain(a => a.Contains($"format={DiskFormatCatalog.QemuName(format)}") && a.Contains("readonly=on"));
+    }
+
+    [Fact]
+    public void Build_WritableFormat_IsNotForcedReadOnly()
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice { FilePath = "/i/x.qcow2", Format = DiskFormat.QCow2, Index = 0 });
+
+        _sut.Build(vm, DefaultQemu()).Arguments.Should().NotContain(a => a.Contains("readonly=on"));
+    }
+
+    [Theory]
+    [InlineData("nbd://srv:10809/disk1")]
+    [InlineData("ssh://bob@host:22/var/d.img")]
+    [InlineData("iscsi://10.0.0.5:3260/iqn.x%3Ad/1")]
+    public void Build_NetworkDisk_PassesTheUriAsTheFile(string uri)
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice { FilePath = uri, Format = DiskFormat.Raw, Index = 0 });
+
+        _sut.Build(vm, DefaultQemu()).Arguments
+            .Should().Contain(a => a.StartsWith("file=" + uri + ",format=raw"));
+    }
+
+    [Fact]
+    public void Build_PathWithComma_IsEscapedSoItCannotInjectOptions()
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice { FilePath = "/i/a,readonly=on.img", Index = 0 });
+
+        _sut.Build(vm, DefaultQemu()).Arguments
+            .Should().Contain(a => a.StartsWith("file=/i/a,,readonly=on.img,"));
+    }
+
+    [Theory]
+    [InlineData(DiskFormat.Qcow, "qcow")]
+    [InlineData(DiskFormat.Qed, "qed")]
+    [InlineData(DiskFormat.Luks, "luks")]
+    [InlineData(DiskFormat.Parallels, "parallels")]
+    public void Build_NewFormats_UseTheirQemuDriverName(DiskFormat format, string driver)
+    {
+        var vm = DefaultVm();
+        vm.Disks.Add(new DiskDevice { FilePath = "/i/x", Format = format, Index = 0 });
+
+        _sut.Build(vm, DefaultQemu()).Arguments.Should().Contain(a => a.Contains($",format={driver},"));
     }
 }

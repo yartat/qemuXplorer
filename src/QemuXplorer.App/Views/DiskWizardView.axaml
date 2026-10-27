@@ -1,0 +1,280 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:QemuXplorer.App.ViewModels"
+        xmlns:models="using:QemuXplorer.Models"
+        x:Class="QemuXplorer.App.Views.DiskWizardView"
+        x:DataType="vm:DiskWizardViewModel"
+        Title="Add disk"
+        Width="700" Height="680"
+        MinWidth="620" MinHeight="540"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppCanvas}"
+        Foreground="{DynamicResource AppText}"
+        FontSize="13">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+    <!-- Header -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="48" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Classes="pageTitle" Text="Add disk"/>
+        <TextBlock Grid.Column="1" Classes="mono" HorizontalAlignment="Right"
+                   VerticalAlignment="Center" Text="{Binding StepTitle}"/>
+      </Grid>
+    </Border>
+
+    <!-- Body -->
+    <Grid Grid.Row="1">
+
+      <!-- Step 1: source -->
+      <ScrollViewer IsVisible="{Binding IsStep0}">
+        <StackPanel Margin="16,16" Spacing="10">
+          <TextBlock Classes="section" Text="WHERE DOES THE DISK COME FROM?"/>
+          <ListBox ItemsSource="{Binding SourceChoices}"
+                   SelectedItem="{Binding SelectedSource}"
+                   Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SourceChoice">
+                <StackPanel Spacing="3" Margin="4,6">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                             Foreground="{DynamicResource AppText}"/>
+                  <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                             Text="{Binding Description}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 2: details for the chosen source -->
+      <ScrollViewer IsVisible="{Binding IsStep1}">
+        <StackPanel Margin="16,16" Spacing="16">
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="FORMAT"/>
+            <ComboBox Width="260" HorizontalAlignment="Left"
+                      ItemsSource="{Binding AvailableFormats}"
+                      SelectedItem="{Binding SelectedFormat}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:DiskFormatInfo">
+                  <TextBlock Classes="mono" Text="{Binding Label}"
+                             Foreground="{DynamicResource AppText}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding FormatDescription}"/>
+            <Border Background="{DynamicResource AppNoticeBg}"
+                    BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,9" IsVisible="{Binding FormatIsReadOnly}">
+              <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                         Text="QEMU opens this format read-only, so the disk will always be attached read-only."/>
+            </Border>
+          </StackPanel>
+
+          <!-- Local file: create or existing -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsLocal}">
+            <TextBlock Classes="section" Text="IMAGE FILE"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Classes="mono" Text="{Binding Path}"
+                       PlaceholderText="Full path to the image file"/>
+              <Button Grid.Column="1" Classes="tool" Content="Browse..."
+                      Command="{Binding BrowsePathCommand}"/>
+            </Grid>
+
+            <StackPanel Spacing="5" IsVisible="{Binding IsCreate}">
+              <Label Content="Virtual size"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Width="150" Minimum="1" Increment="1" FormatString="0.##"
+                               Value="{Binding SizeValue}"/>
+                <ComboBox Width="90" ItemsSource="{Binding SizeUnits}"
+                          SelectedItem="{Binding SizeUnit}"/>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Network sources -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsRemote}">
+            <TextBlock Classes="section" Text="CONNECTION"/>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <StackPanel Spacing="5">
+                <Label Content="Host"/>
+                <TextBox Classes="mono" Width="300" Text="{Binding Host}"
+                         PlaceholderText="name or address"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Port"/>
+                <NumericUpDown Width="110" Minimum="1" Maximum="65535" FormatString="0"
+                               Value="{Binding Port}"/>
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="5" IsVisible="{Binding IsNbd}">
+              <Label Content="Export name (optional)"/>
+              <TextBox Classes="mono" Width="300" HorizontalAlignment="Left" Text="{Binding Export}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="10" IsVisible="{Binding IsSsh}">
+              <StackPanel Spacing="5">
+                <Label Content="User (optional)"/>
+                <TextBox Classes="mono" Width="220" HorizontalAlignment="Left" Text="{Binding User}"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Remote path"/>
+                <TextBox Classes="mono" Text="{Binding RemotePath}"
+                         PlaceholderText="/var/lib/images/disk.img"/>
+              </StackPanel>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                         Text="Authentication uses your SSH agent or keys. No password is stored."/>
+            </StackPanel>
+
+            <StackPanel Spacing="10" IsVisible="{Binding IsIscsi}">
+              <StackPanel Spacing="5">
+                <Label Content="Target (IQN)"/>
+                <TextBox Classes="mono" Text="{Binding Target}"
+                         PlaceholderText="iqn.2001-04.com.example:storage.disk1"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <StackPanel Spacing="5">
+                  <Label Content="User (optional)"/>
+                  <TextBox Classes="mono" Width="220" Text="{Binding User}"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="LUN"/>
+                  <NumericUpDown Width="110" Minimum="0" FormatString="0" Value="{Binding Lun}"/>
+                </StackPanel>
+              </StackPanel>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                         Text="CHAP passwords are not stored. Set LIBISCSI_CHAP_PASSWORD in the environment QEMU runs in."/>
+            </StackPanel>
+
+            <Border Background="{DynamicResource AppNoticeBg}"
+                    BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,9" IsVisible="{Binding HasDriverWarning}">
+              <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                         Text="{Binding DriverWarning}"/>
+            </Border>
+          </StackPanel>
+
+          <!-- LUKS passphrase file -->
+          <StackPanel Spacing="6" IsVisible="{Binding NeedsKey}">
+            <TextBlock Classes="section" Text="LUKS PASSPHRASE FILE"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Classes="mono" Text="{Binding KeySecretFile}"
+                       PlaceholderText="Path to a file containing the passphrase"/>
+              <Button Grid.Column="1" Classes="tool" Content="Browse..."
+                      Command="{Binding BrowseKeyCommand}"/>
+            </Grid>
+            <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                       Text="Only the file's path is saved. QEMU reads the passphrase from it; it never appears on the command line."/>
+          </StackPanel>
+
+          <!-- qemu-img create options -->
+          <StackPanel Spacing="4" IsVisible="{Binding ShowOptions}">
+            <TextBlock Classes="section" Text="CREATION OPTIONS"/>
+            <TextBlock Classes="mono" FontSize="11" Margin="0,0,0,6"
+                       Text="Left at their defaults, these are not passed to qemu-img."/>
+            <ItemsControl ItemsSource="{Binding Options}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ImageOptionViewModel">
+                  <Grid ColumnDefinitions="150,230,*" Margin="0,3" ColumnSpacing="10">
+                    <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding Label}"/>
+                    <TextBox Grid.Column="1" Classes="mono" IsVisible="{Binding IsText}"
+                             Text="{Binding Value}"/>
+                    <ComboBox Grid.Column="1" Width="230" IsVisible="{Binding IsChoice}"
+                              ItemsSource="{Binding ChoiceItems}"
+                              SelectedItem="{Binding SelectedChoice}"/>
+                    <CheckBox Grid.Column="1" IsVisible="{Binding IsBool}"
+                              IsChecked="{Binding BoolValue}"/>
+                    <TextBlock Grid.Column="2" Classes="mono" FontSize="11" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Text="{Binding Description}"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 3: attach -->
+      <ScrollViewer IsVisible="{Binding IsStep2}">
+        <StackPanel Margin="16,16" Spacing="16">
+
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="ATTACH AS"/>
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <StackPanel Spacing="5">
+                <Label Content="Interface"/>
+                <ComboBox Width="150" ItemsSource="{Binding Interfaces}"
+                          SelectedItem="{Binding SelectedInterface}"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Cache"/>
+                <ComboBox Width="170" ItemsSource="{Binding CacheModes}"
+                          SelectedItem="{Binding SelectedCache}"/>
+              </StackPanel>
+            </StackPanel>
+            <CheckBox Content="Boot from this disk" IsChecked="{Binding IsBoot}"/>
+            <CheckBox Content="Read-only" IsChecked="{Binding IsReadOnly}"
+                      IsEnabled="{Binding CanEditReadOnly}"/>
+            <CheckBox Content="Present as a CD-ROM" IsChecked="{Binding IsCdRom}"/>
+            <CheckBox Content="Snapshot mode (discard writes on exit)" IsChecked="{Binding IsSnapshot}"/>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="SUMMARY"/>
+            <Border Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <TextBlock Classes="mono" TextWrapping="Wrap" Text="{Binding Summary}"/>
+            </Border>
+          </StackPanel>
+
+          <StackPanel Spacing="6" IsVisible="{Binding HasCommandPreview}">
+            <TextBlock Classes="section" Text="WILL RUN"/>
+            <Border Background="{DynamicResource AppSurfaceAlt}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}" FontSize="11.5"
+                                   TextWrapping="Wrap" Text="{Binding CommandPreview}"/>
+            </Border>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- Status / validation -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            MinHeight="30" Padding="16,6">
+      <Grid>
+        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{DynamicResource AppDanger}" Text="{Binding StatusMessage}"/>
+      </Grid>
+    </Border>
+
+    <!-- Buttons -->
+    <Border Grid.Row="3"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Padding="16,10">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+        <Button Classes="tool" Content="Cancel" Command="{Binding CancelCommand}"/>
+        <Button Grid.Column="2" Classes="tool" Content="Back" Margin="0,0,8,0"
+                IsEnabled="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Next"
+                IsVisible="{Binding !IsLastStep}" IsEnabled="{Binding CanGoNext}"
+                Command="{Binding NextCommand}"/>
+        <Button Grid.Column="4" Classes="primary" Content="Finish"
+                IsVisible="{Binding IsLastStep}" Command="{Binding FinishCommand}"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

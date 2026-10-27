@@ -141,6 +141,9 @@ public partial class VmEditViewModel : ViewModelBase
         _argBuilder = argBuilder;
         _vm = new VirtualMachine();
 
+        // Adding or removing a disk changes the command, but raises no property change.
+        Disks.CollectionChanged += (_, _) => { if (!_suppressPreview) RefreshPreview(); };
+
         PropertyChanged += (_, e) =>
         {
             if (_suppressPreview) return;
@@ -284,10 +287,15 @@ public partial class VmEditViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
-    [RelayCommand]
-    private void AddDisk()
+    /// <summary>The installation the wizard uses to find qemu-img; null if none is default.</summary>
+    public QemuInstallation? DefaultQemu => _qemu;
+
+    /// <summary>Adds a disk produced by the Add-disk wizard.</summary>
+    public void AddDisk(DiskDevice disk)
     {
-        Disks.Add(new DiskDevice { VmId = _vm.Id, Index = Disks.Count });
+        disk.VmId = _vm.Id;
+        disk.Index = Disks.Count;
+        Disks.Add(disk);
     }
 
     [RelayCommand]
