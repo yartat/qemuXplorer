@@ -20,6 +20,52 @@ Define virtual machines in a GUI, keep them in a local SQLite database, preview 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) `10.0.300` or later
 - QEMU installed on the host system (`qemu-system-*` and, for disk image management, `qemu-img`)
 
+## Download
+
+Ready-to-run builds are attached to every [release](../../releases/latest). Pick the file for your system:
+
+| System | File | Notes |
+|---|---|---|
+| **Windows** (64-bit) | `QemuXplorer-<version>-win-x64-setup.exe` | Installer, adds a Start menu entry and an uninstaller |
+| | `QemuXplorer-<version>-win-x64.zip` | Unpack anywhere and run `QemuXplorer.exe` |
+| | `QemuXplorer-<version>-win-x64-portable.exe` | A single file, nothing to install; unpacks its libraries on first start |
+| **Windows** (32-bit) | the same three files with `win-x86` | |
+| **Linux** (Debian, Ubuntu) | `qemuxplorer_<version>_amd64.deb` | For Intel/AMD processors |
+| | `qemuxplorer_<version>_arm64.deb` | For Arm processors |
+| **macOS** (Apple Silicon) | `QemuXplorer-<version>-osx-arm64.zip` | Contains `QemuXplorer.app` |
+| **macOS** (Intel) | `QemuXplorer-<version>-osx-x64.zip` | Contains `QemuXplorer.app` |
+
+The builds include the .NET runtime, so you do not need to install .NET. QEMU itself is not
+included: install it separately (see [Prerequisites](#prerequisites)).
+
+### Windows
+
+Run the installer, or unpack the zip, or just start the portable exe. If SmartScreen says the
+publisher is unknown, choose **More info → Run anyway**: the builds are not code-signed.
+
+### Linux
+
+```bash
+sudo apt install ./qemuxplorer_<version>_amd64.deb
+```
+
+Then start **QEMU Explorer** from the application menu, or run `qemuxplorer`.
+Remove it with `sudo apt remove qemuxplorer`.
+
+### macOS
+
+Unzip and move `QemuXplorer.app` to **Applications**. The app is not notarized, so macOS blocks it
+after a download. Remove the block once:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/QemuXplorer.app
+```
+
+### Where your data lives
+
+Machines, settings and logs are stored in `~/.qemu_explorer` (on Windows, `C:\Users\<you>\.qemu_explorer`),
+not next to the program. Updating or reinstalling keeps them; uninstalling does not delete them.
+
 ## Getting Started
 
 ```bash
