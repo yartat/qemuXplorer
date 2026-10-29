@@ -9,6 +9,8 @@ public sealed class VirtualMachineRepository : IVirtualMachineRepository
 
     public VirtualMachineRepository(IDbContextFactory<QemuXplorerDbContext> factory) => _factory = factory;
 
+    // Three child collections are loaded with every machine. In one statement their rows multiply
+    // (disks x adapters x USB devices per machine), so each collection is loaded by its own query.
     public async Task<IReadOnlyList<VirtualMachine>> GetAllAsync(CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
@@ -16,6 +18,7 @@ public sealed class VirtualMachineRepository : IVirtualMachineRepository
             .Include(x => x.Disks)
             .Include(x => x.NetworkAdapters)
             .Include(x => x.UsbDevices)
+            .AsSplitQuery()
             .AsNoTracking()
             .OrderBy(x => x.Name)
             .ToListAsync(ct);
@@ -28,6 +31,7 @@ public sealed class VirtualMachineRepository : IVirtualMachineRepository
             .Include(x => x.Disks)
             .Include(x => x.NetworkAdapters)
             .Include(x => x.UsbDevices)
+            .AsSplitQuery()
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
     }
@@ -58,6 +62,7 @@ public sealed class VirtualMachineRepository : IVirtualMachineRepository
             .Include(x => x.Disks)
             .Include(x => x.NetworkAdapters)
             .Include(x => x.UsbDevices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == vm.Id, ct);
 
         if (existing is null)
@@ -112,7 +117,13 @@ public sealed class VirtualMachineRepository : IVirtualMachineRepository
         {
             var match = tracked.FirstOrDefault(t => keySelector(t) == keySelector(item));
             if (match is null)
+            {
                 tracked.Add(item);
+                // The key is a Guid the caller already set (the entity constructor does it), and EF
+                // treats a row with a set key as one that exists. Left to infer it, EF would send
+                // an UPDATE for a row that is not there and fail with DbUpdateConcurrencyException.
+                db.Entry(item).State = EntityState.Added;
+            }
             else
                 db.Entry(match).CurrentValues.SetValues(item);
         }

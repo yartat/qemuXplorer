@@ -48,9 +48,9 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 125 in Core.Tests (argument builder, machine and disk catalogs,
-disk image and CPU model services) and 77 headless UI tests (view loading, window icons, icon files,
-machine and CPU pickers, disk wizard).
+solution runs both test projects: 212 in Core.Tests (argument builder, machine and disk catalogs,
+disk image, CPU model and CPU description services, repository) and 115 headless UI tests (view loading, window icons, icon files,
+machine and CPU pickers, disk wizard, logging).
 
 ## Package management
 
@@ -159,22 +159,69 @@ block (`CpuModelService.Parse`).
   byte-identical for aarch64 under `virt`, `raspi3b` and `sbsa-ref`, so the picker is keyed on
   architecture only. Whether a *machine* accepts a given CPU is decided when QEMU starts; nothing
   here can tell you in advance.
-- **`host` is always first and is the default** (`CpuConfig.Model`, `CpuModelService.Host`), even
-  though most architectures do not list it. It only works with KVM, HVF or WHPX.
+- **`host` is always listed first; the "(machine default)" entry second.** Most architectures do not
+  list `host` themselves, so the service adds it. The machine default has an **empty name** and means
+  "pass no `-cpu`": QEMU then uses the CPU the selected machine is built around. The argument builder
+  omits `-cpu` for a blank model.
+- **`host` is the default only when this computer has the guest's architecture**
+  (`HostPlatform.CanUseHostCpu`, via `CpuModelService.DefaultModelName`); otherwise the default is the
+  machine default. Across architectures QEMU emulates and `-cpu host` fails (`unable to find CPU model
+  'host'`); without an accelerator it fails too (`requires KVM or HVF`). With `-accel whpx` it works on
+  Windows. On QEMU 11.1 all 14 tried machines start with no `-cpu`.
+- `HostPlatform` uses `RuntimeInformation.OSArchitecture` (the CPU, not this process) and is
+  deliberately conservative: x64 matches x86_64 and i386; Arm64 matches aarch64 only, because 32-bit
+  Arm guests need 32-bit support most Arm64 cores no longer have.
+- **An untouched default follows the architecture; a choice does not.** In the editor, if the model
+  still equals the old architecture's default it becomes the new one's; a model the user picked stays
+  while the new emulator lists it. `VirtualMachinesViewModel.AddVmAsync` starts a new machine with the
+  default for its architecture. `CpuConfig.Model` stays `"host"` as the entity's own fallback because
+  Models cannot know the host. Existing machines are never rewritten.
 - **Never rewrite a saved model just by opening the editor.** A saved value the build does not list
   is kept and shown as "not listed by this QEMU build". Only an explicit *architecture change*
-  replaces an unlisted model with `host`, and only when the list was actually read: a failed probe
-  knows nothing, so it must not discard the user's choice.
+  replaces an unlisted model with that architecture's default, and only when the list was actually read:
+  a failed probe knows nothing, so it must not discard the user's choice.
 - Results are cached per binary for the process lifetime; failures are not cached. The shared load
   deliberately ignores any one caller's cancellation token.
-- With no default installation, or if QEMU cannot be run, the picker degrades to `host` plus the
-  saved value and shows why in `CpuModelsNote`.
+- With no default installation, or if QEMU cannot be run, the picker degrades to `host`, the machine
+  default and the saved value, and shows why in `CpuModelsNote`.
 - `QemuArgumentBuilder.GetBinaryName` is the one architecture-to-binary table and is public so the
   probe uses it too.
 - Parsing stops at the first blank line. s390x follows the model list with "Recognized feature
   flags" sections that would otherwise be read as hundreds of bogus models.
 - The list includes aliases and versioned variants (`Broadwell-IBRS`, `Broadwell-v3`), all valid
   `-cpu` values. x86_64 reports 189, ppc64 416.
+
+### CPU model descriptions
+
+`-cpu help` describes models only for x86 and s390x. aarch64/arm, RISC-V and MIPS print bare names,
+PowerPC prints only a PVR, and many x86 entries are aliases. `CpuModelDescriptions.Enrich` fills the
+gaps after parsing, in this order; **a description QEMU supplies is never replaced**:
+
+1. `(alias of X)` / `(alias for X)` becomes `Alias of X: <X's description>`, resolved recursively
+   (loop-safe).
+2. x86 `(alias configured by machine type)` takes the description of its `<name>-v1` entry and
+   adds that the exact version is set by the machine type (the QEMU CPU models page says the same).
+3. Bare names come from hand-written tables: x86 (the 4 oldest), Arm, RISC-V, MIPS.
+4. PowerPC is described by **rules over the family in the name** (G3/G4/G5, e300/e500/e600, MPC83xx/
+   85xx/86xx, 4xx, POWERn, PPE42), plus the revision from the `_vX` suffix and QEMU's own PVR.
+   Two-digit revisions are major.minor: `e500v2_v30` is 3.0, which the PVR's low byte confirms.
+5. A model nothing matches keeps an empty description. A CPU added by a newer QEMU still appears,
+   just without text, and is never given an invented one.
+
+- **What is sourced and what is not.** The MIPS table follows
+  <https://www.qemu.org/docs/master/system/qemu-cpu-models.html> (release level and year per core);
+  checking it there caught `I7200`, which is **nanoMIPS**, not "MIPS32 Release 6". That page covers only
+  x86 and MIPS, so **the Arm, RISC-V and PowerPC entries come from the vendors' own naming and have not
+  been checked against QEMU documentation.** Keep them to the core and its architecture level.
+- **`EveryModelOfARealQemu_HasADescription`** runs the real `-cpu help` output of QEMU 11.1 for all
+  11 architectures (`tests/.../TestData/cpu-help/*.txt`) and fails naming any model left without text.
+  It is what catches a typo in a table key. To cover a newer QEMU, refresh those fixtures from a
+  real install; do not hand-edit them.
+- Whitespace runs inside a description are collapsed: s390x pads its columns with spaces.
+- `host` reads "Passes this computer's CPU to the guest. Recommended unless you need live migration",
+  which is the page's own guidance for host passthrough.
+- The dropdown truncates long text, so each item has a tooltip and the full description of the
+  selected model is shown under the field.
 
 ## Disks and the Add-disk wizard
 
@@ -291,6 +338,39 @@ transient because it backs a dialog.
 Reads use `AsNoTracking()` and hand back detached graphs. `VirtualMachineRepository.UpdateAsync`
 therefore reloads the VM and reconciles children by key via `SyncChildren` — do not replace it
 with `db.Update(graph)`, which marks not-yet-inserted children as Modified and throws.
+
+- **A child new to the machine must be marked `EntityState.Added` explicitly.** Disks, adapters and USB
+  devices get their `Guid` key on construction, so EF cannot tell "new" from "existing" by the key and
+  would send an `UPDATE` that matches no row (`DbUpdateConcurrencyException`). `SyncChildren` does this;
+  before, "Add disk" then Save on an existing machine threw.
+- **The three collection `Include`s use `AsSplitQuery()`.** A single query multiplies rows
+  (disks x adapters x USB devices) and EF logs `MultipleCollectionIncludeWarning`.
+  `VirtualMachineRepositoryTests` runs on in-memory SQLite with that warning turned into an exception.
+
+## Logging
+
+Logs go to **a file, not the console**: `~/.qemu_explorer/logs/qemuxplorer-<yyyyMMdd>.log`, written by
+Serilog (`AppLogging.Configure`). A desktop app has no console to read.
+
+- Rolls daily, keeps 14 files, also rolls at 10 MB, and is opened `shared` so two running copies do
+  not lock each other out. Every write is flushed, so a crash loses nothing.
+- **Environment variables:** `QEMUXPLORER_LOG_CONSOLE=1` (or `true`/`yes`) adds the console, useful when
+  running from a terminal; `QEMUXPLORER_LOG_LEVEL` is one of Trace, Debug, Information, Warning, Error,
+  Critical (default Information). Unusable values are ignored rather than rejected.
+- **EF Core is capped at Warning** unless the level is Debug or Trace, because it logs every SQL command
+  at Information and would drown the file. At Debug, a run produces over a hundred EF lines.
+- **Gotcha:** `AddSerilog` removes Microsoft.Extensions.Logging's level rules for its own provider, so
+  `SetMinimumLevel` and `AddFilter` do **not** govern the file. The level and the EF cap are set inside
+  Serilog; the MEL rules only govern the console. `AppLoggingTests` fails if this regresses.
+- An unwritable log folder never stops the app: logging just goes nowhere.
+- Code logs through `ILogger<T>`; there is no `Console.WriteLine` in the app. `Program.cs` still has
+  Avalonia's `LogToTrace()`, which goes to `Trace` and is not captured in the file.
+- **Unhandled exceptions are logged** by `UnhandledExceptionLogging`, installed first thing in `Program.cs`
+  from `AppDomain.UnhandledException` (Critical when terminating), `TaskScheduler.UnobservedTaskException`
+  (Error, marked observed) and, after Avalonia setup, `Dispatcher.UIThread.UnhandledException` (Critical).
+  It **only records**: it never sets `Handled`, so the app still terminates as before. The logger is looked
+  up per report because the container may not exist yet or may be disposed. If there is no logger or it
+  throws, the entry goes to `~/.qemu_explorer/logs/unhandled.log`; the handler itself never throws.
 
 ## Process lifetime
 

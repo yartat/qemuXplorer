@@ -144,6 +144,9 @@ public partial class VmEditViewModel : ViewModelBase
 
     private Task _cpuModelsLoaded = Task.CompletedTask;
 
+    // The architecture before the latest change, to tell an untouched default from a choice.
+    private GuestArchitecture _lastArchitecture;
+
     /// <summary>Completes when the CPU list for the current architecture has been applied.</summary>
     public Task CpuModelsLoaded => _cpuModelsLoaded;
 
@@ -162,13 +165,14 @@ public partial class VmEditViewModel : ViewModelBase
 
     /// <param name="autoCorrect">
     /// True only when the user changed architecture: a model the new emulator does not list is
-    /// replaced with "host". False when opening a saved machine, which must not be rewritten.
+    /// replaced with that architecture's default. False when opening a saved machine, which must
+    /// not be rewritten.
     /// </param>
     private async Task RefreshCpuModelsAsync(bool autoCorrect)
     {
         var architecture = Architecture;
         var qemu = _qemu;
-        IReadOnlyList<CpuModelInfo> models = [CpuModelService.Host];
+        IReadOnlyList<CpuModelInfo> models = [CpuModelService.Host, CpuModelService.MachineDefault];
         var note = string.Empty;
         var known = false;
 
@@ -202,7 +206,7 @@ public partial class VmEditViewModel : ViewModelBase
     {
         // Only judge the saved model against a list we actually read; a failed probe knows nothing.
         if (autoCorrect && listIsKnown && !models.Any(m => m.Name == CpuModel))
-            CpuModel = CpuModelService.Host.Name;
+            CpuModel = CpuModelService.DefaultModelName(Architecture);
 
         var list = models.ToList();
         if (!string.IsNullOrWhiteSpace(CpuModel) && list.All(m => m.Name != CpuModel))
@@ -246,6 +250,13 @@ public partial class VmEditViewModel : ViewModelBase
 
             if (e.PropertyName is nameof(Architecture))
             {
+                // A model still equal to the old architecture's default was never chosen, so it
+                // follows the architecture: host while it matches this computer, else machine default.
+                var previous = _lastArchitecture;
+                _lastArchitecture = Architecture;
+                if (CpuModel == CpuModelService.DefaultModelName(previous))
+                    CpuModel = CpuModelService.DefaultModelName(Architecture);
+
                 RebuildMachineTypes(autoCorrect: true);
                 _cpuModelsLoaded = RefreshCpuModelsAsync(autoCorrect: true);
             }
@@ -287,6 +298,7 @@ public partial class VmEditViewModel : ViewModelBase
         Name = vm.Name;
         Description = vm.Description;
         Architecture = vm.Architecture;
+        _lastArchitecture = vm.Architecture;
         MachineType = vm.MachineType;
         IsTemplate = vm.IsTemplate;
 
@@ -319,7 +331,7 @@ public partial class VmEditViewModel : ViewModelBase
         foreach (var u in vm.UsbDevices) UsbDevices.Add(u);
 
         RebuildMachineTypes(autoCorrect: false);
-        ApplyCpuModels([CpuModelService.Host], note: string.Empty, listIsKnown: false, autoCorrect: false);
+        ApplyCpuModels([CpuModelService.Host, CpuModelService.MachineDefault], note: string.Empty, listIsKnown: false, autoCorrect: false);
 
         _suppressPreview = false;
         OnPropertyChanged(nameof(ArchSummary));

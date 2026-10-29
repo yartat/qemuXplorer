@@ -150,7 +150,9 @@ public class DiskWizardViewModelTests : IDisposable
         var sut = await ReadyAsync(DiskSourceMode.CreateNew);
         sut.Path = Path.Combine(_dir, "a.qcow2");
 
-        sut.CommandPreview.Should().NotContain("-o");
+        // Compare whole arguments: the path holds a random temp-folder name, and a substring check for
+        // "-o" matched it ("qx-wizard-o5kz") about one run in thirty.
+        sut.CommandPreview.Split(' ').Should().NotContain("-o");
     }
 
     [AvaloniaTheory]

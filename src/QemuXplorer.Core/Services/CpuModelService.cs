@@ -31,7 +31,26 @@ public class CpuModelService
     /// yet it is the right default: it means "the host's own CPU" under KVM, HVF or WHPX.
     /// </summary>
     public static CpuModelInfo Host { get; } =
-        new("host", "Same CPU as this computer. Needs KVM, HVF or WHPX");
+        new("host", "Passes this computer's CPU to the guest. Recommended for a guest of the same architecture unless you need live migration; needs KVM, HVF or WHPX");
+
+    /// <summary>
+    /// "No <c>-cpu</c> argument": QEMU uses the CPU the selected machine type is built around.
+    /// It is the right default when <c>host</c> cannot apply, and a forced CPU can clash with a
+    /// board that expects a particular one. The empty name is what is stored and what the
+    /// argument builder treats as "omit -cpu".
+    /// </summary>
+    public static CpuModelInfo MachineDefault { get; } =
+        new(string.Empty, "Let QEMU choose the CPU of the selected machine type (no -cpu argument)");
+
+    /// <summary>
+    /// The model a machine of this architecture starts with: <c>host</c> when this computer has
+    /// the same architecture as the guest, otherwise the machine's own default.
+    /// </summary>
+    public static string DefaultModelName(GuestArchitecture architecture)
+        => DefaultModelName(architecture, HostPlatform.Current);
+
+    public static string DefaultModelName(GuestArchitecture architecture, System.Runtime.InteropServices.Architecture host)
+        => HostPlatform.CanUseHostCpu(architecture, host) ? Host.Name : MachineDefault.Name;
 
     public async Task<IReadOnlyList<CpuModelInfo>> GetModelsAsync(
         string binaryDirectory,
@@ -42,7 +61,7 @@ public class CpuModelService
 
         // The shared load must not be tied to one caller's token, or cancelling that caller
         // would fail everyone waiting on the same probe.
-        var load = _cache.GetOrAdd(exe, path => LoadAsync(path));
+        var load = _cache.GetOrAdd(exe, path => LoadAsync(path, architecture));
         try
         {
             return await load.WaitAsync(ct);
@@ -54,8 +73,8 @@ public class CpuModelService
         }
     }
 
-    private async Task<IReadOnlyList<CpuModelInfo>> LoadAsync(string exe)
-        => WithHost(Parse(await ReadCpuHelpAsync(exe, CancellationToken.None)));
+    private async Task<IReadOnlyList<CpuModelInfo>> LoadAsync(string exe, GuestArchitecture architecture)
+        => WithDefaults(CpuModelDescriptions.Enrich(Parse(await ReadCpuHelpAsync(exe, CancellationToken.None)), architecture));
 
     /// <summary>Runs <c>-cpu help</c>. Virtual so tests can supply output without a QEMU install.</summary>
     protected virtual async Task<string> ReadCpuHelpAsync(string exe, CancellationToken ct)
@@ -135,12 +154,13 @@ public class CpuModelService
 
             var name = match.Groups["name"].Value;
             if (seen.Add(name))
-                models.Add(new CpuModelInfo(name, match.Groups["desc"].Value.Trim()));
+                models.Add(new CpuModelInfo(name, Regex.Replace(match.Groups["desc"].Value, @"\s{2,}", " ").Trim()));
         }
 
         return models;
     }
 
-    private static IReadOnlyList<CpuModelInfo> WithHost(IReadOnlyList<CpuModelInfo> models)
-        => [Host, .. models.Where(m => m.Name != Host.Name)];
+    // host first, the machine default second, then everything QEMU lists.
+    private static IReadOnlyList<CpuModelInfo> WithDefaults(IReadOnlyList<CpuModelInfo> models)
+        => [Host, MachineDefault, .. models.Where(m => m.Name != Host.Name && m.Name.Length > 0)];
 }

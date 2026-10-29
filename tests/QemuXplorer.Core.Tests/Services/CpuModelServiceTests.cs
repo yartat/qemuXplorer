@@ -83,7 +83,31 @@ public class CpuModelServiceTests
         var models = await sut.GetModelsAsync("/q", GuestArchitecture.Aarch64);
 
         models.First().Name.Should().Be("host");
-        models.Select(m => m.Name).Should().Equal("host", "a64fx", "cortex-a53", "max");
+        models[1].Should().BeSameAs(CpuModelService.MachineDefault, "the machine default comes right after host");
+        models.Select(m => m.Name).Should().Equal("host", "", "a64fx", "cortex-a53", "max");
+    }
+
+    [Theory]
+    [InlineData(GuestArchitecture.X86_64, System.Runtime.InteropServices.Architecture.X64, "host")]
+    [InlineData(GuestArchitecture.I386, System.Runtime.InteropServices.Architecture.X64, "host")]
+    [InlineData(GuestArchitecture.Aarch64, System.Runtime.InteropServices.Architecture.Arm64, "host")]
+    [InlineData(GuestArchitecture.Aarch64, System.Runtime.InteropServices.Architecture.X64, "")]
+    [InlineData(GuestArchitecture.X86_64, System.Runtime.InteropServices.Architecture.Arm64, "")]
+    [InlineData(GuestArchitecture.RiscV64, System.Runtime.InteropServices.Architecture.X64, "")]
+    public void DefaultModel_IsHostOnlyWhenTheArchitecturesMatch(
+        GuestArchitecture guest, System.Runtime.InteropServices.Architecture host, string expected)
+    {
+        CpuModelService.DefaultModelName(guest, host).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task GetModels_NeverListsTheMachineDefaultTwice_OrAnEmptyNameFromQemu()
+    {
+        var sut = new FakeCpuModelService("Available CPUs:\n  max\n");
+
+        var models = await sut.GetModelsAsync("/q", GuestArchitecture.Aarch64);
+
+        models.Count(m => m.Name.Length == 0).Should().Be(1);
     }
 
     [Fact]
@@ -95,6 +119,18 @@ public class CpuModelServiceTests
 
         models.Count(m => m.Name == "host").Should().Be(1);
         models[0].Should().BeSameAs(CpuModelService.Host);
+    }
+
+    [Fact]
+    public async Task GetModels_FillsInDescriptionsQemuLeavesOut()
+    {
+        // aarch64 prints bare names; the descriptions must still reach the editor's picker.
+        var sut = new FakeCpuModelService(Aarch64);
+
+        var models = await sut.GetModelsAsync("/q", GuestArchitecture.Aarch64);
+
+        models.Single(m => m.Name == "a64fx").Description.Should().Contain("A64FX");
+        models.Where(m => m.Name != "max").Should().OnlyContain(m => m.Description.Length > 0);
     }
 
     [Fact]

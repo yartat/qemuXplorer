@@ -50,6 +50,8 @@ public partial class VirtualMachinesViewModel : ViewModelBase
     private async Task AddVmAsync()
     {
         var vm = new VirtualMachine { Name = "New machine" };
+        // "host" only helps when this computer has the guest's architecture; see HostPlatform.
+        vm.Cpu.Model = CpuModelService.DefaultModelName(vm.Architecture);
         using var scope = _scopeFactory.CreateScope();
         var vmService = scope.ServiceProvider.GetRequiredService<VirtualMachineService>();
         await vmService.AddAsync(vm);

@@ -21,6 +21,9 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection"   Version="10.0.*" />
     <PackageVersion Include="Microsoft.Extensions.Hosting"               Version="10.0.*" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions"  Version="10.0.*" />
+    <!-- Logging to a file. Microsoft.Extensions.Logging has no built-in file provider. -->
+    <PackageVersion Include="Serilog.Extensions.Logging"                 Version="10.0.*" />
+    <PackageVersion Include="Serilog.Sinks.File"                         Version="7.0.*" />
     <!-- MVVM Toolkit -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.*" />
     <!-- Testing -->

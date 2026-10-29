@@ -299,6 +299,22 @@ public class QemuArgumentBuilderTests
     }
 
     [Fact]
+    public void Build_ABlankCpuModel_OmitsTheCpuArgumentSoQemuUsesTheMachineDefault()
+    {
+        var vm = DefaultVm(v => v.Cpu.Model = "");
+
+        _sut.Build(vm, DefaultQemu()).Arguments.Should().NotContain("-cpu");
+    }
+
+    [Fact]
+    public void Build_ANamedCpuModel_IsPassedToQemu()
+    {
+        var vm = DefaultVm(v => v.Cpu.Model = "max");
+
+        _sut.Build(vm, DefaultQemu()).Arguments.Should().ContainInOrder("-cpu", "max");
+    }
+
+    [Fact]
     public void Build_LuksDisk_ReadsThePassphraseFromASecretObject()
     {
         var vm = DefaultVm();

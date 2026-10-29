@@ -97,14 +97,15 @@
               <StackPanel Orientation="Horizontal" Spacing="14">
                 <StackPanel Spacing="5">
                   <Label Content="Model"/>
-                  <ComboBox Width="230" MaxDropDownHeight="360"
+                  <ComboBox Width="300" MaxDropDownHeight="360"
                             ItemsSource="{Binding CpuModels}"
                             SelectedItem="{Binding SelectedCpuModel}">
                     <ComboBox.ItemTemplate>
                       <DataTemplate x:DataType="models:CpuModelInfo">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="10"
+                                    ToolTip.Tip="{Binding Description}">
                           <TextBlock Classes="mono" Foreground="{DynamicResource AppText}"
-                                     Text="{Binding Name}"/>
+                                     Text="{Binding DisplayName}"/>
                           <TextBlock Classes="dim" FontSize="11" VerticalAlignment="Center"
                                      TextTrimming="CharacterEllipsis"
                                      Text="{Binding Description}"/>
@@ -132,6 +133,9 @@
                            Foreground="{DynamicResource AppOk}"
                            Text="{Binding VcpuSummary}"/>
               </StackPanel>
+
+              <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                         Text="{Binding SelectedCpuModel.Description}"/>
 
               <!-- Shown when the model list could not be read from QEMU. -->
               <Border Background="{DynamicResource AppNoticeBg}"

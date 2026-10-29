@@ -44,6 +44,17 @@ dotnet test QemuXplorer.sln
 3. Create a Virtual Machine and configure CPU, memory, disks, network and display.
 4. Use the command preview to check the generated arguments, then click **Start**.
 
+## Logs
+
+The application writes its log to a file, not the console:
+`~/.qemu_explorer/logs/qemuxplorer-<date>.log` (on Windows, `%USERPROFILE%\.qemu_explorer\logs`). Files
+roll daily and the last 14 are kept.
+
+| Variable | Effect |
+|---|---|
+| `QEMUXPLORER_LOG_CONSOLE=1` | Also write to the console, e.g. when running from a terminal |
+| `QEMUXPLORER_LOG_LEVEL` | `Trace`, `Debug`, `Information` (default), `Warning`, `Error` or `Critical` |
+
 ## Solution Structure
 
 ```

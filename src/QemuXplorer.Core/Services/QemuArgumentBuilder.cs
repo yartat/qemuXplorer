@@ -26,8 +26,12 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
         args.Add($"type={vm.MachineType}{accelStr}");
 
         // CPU
-        args.Add("-cpu");
-        args.Add(vm.Cpu.Model);
+        // A blank model is "the machine's own default", which QEMU picks when -cpu is absent.
+        if (!string.IsNullOrWhiteSpace(vm.Cpu.Model))
+        {
+            args.Add("-cpu");
+            args.Add(vm.Cpu.Model);
+        }
         args.Add("-smp");
         args.Add($"{vm.Cpu.Count},sockets={vm.Cpu.Sockets},cores={vm.Cpu.Cores},threads={vm.Cpu.Threads}");
 

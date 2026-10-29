@@ -31,6 +31,10 @@ public class App : Application
         _services = services.BuildServiceProvider();
         Services = _services;
 
+        // Before the database work, so a failure there still leaves a trace in the file.
+        _services.GetRequiredService<ILogger<App>>()
+            .LogInformation("QemuXplorer started. Data directory: {DataDirectory}", DbPathHelper.GetDataDirectory());
+
         // Must complete before the first window binds to anything database-backed.
         DatabaseInitializer
             .InitializeAsync(_services.GetRequiredService<IDbContextFactory<QemuXplorerDbContext>>())
@@ -93,7 +97,7 @@ public class App : Application
         services.AddSingleton<DiskImageService>();
         services.AddSingleton<CpuModelService>();
 
-        services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        services.AddLogging(b => AppLogging.Configure(b, LoggingOptions.Default));
 
         // Page view models are singletons because MainWindowViewModel holds them for the
         // lifetime of the shell; resolving them transiently would discard page state on

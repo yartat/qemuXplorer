@@ -60,7 +60,7 @@ public class CpuModelSelectionTests
     {
         var sut = await OpenedAsync(new FakeCpuModels { [GuestArchitecture.X86_64] = X86 }, GuestArchitecture.X86_64, "host");
 
-        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "Broadwell-v1", "max");
+        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "", "Broadwell-v1", "max");
         sut.SelectedCpuModel!.Name.Should().Be("host");
         sut.HasCpuModelsNote.Should().BeFalse();
     }
@@ -84,11 +84,11 @@ public class CpuModelSelectionTests
         sut.Architecture = GuestArchitecture.Aarch64;
         await sut.CpuModelsLoaded;
 
-        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "cortex-a53", "max");
+        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "", "cortex-a53", "max");
     }
 
     [AvaloniaFact]
-    public async Task ChangingArchitecture_ReplacesAModelTheNewEmulatorDoesNotList()
+    public async Task ChangingArchitecture_ReplacesAModelTheNewEmulatorDoesNotList_WithTheNewArchitecturesDefault()
     {
         var fake = new FakeCpuModels { [GuestArchitecture.X86_64] = X86, [GuestArchitecture.Aarch64] = Arm };
         var sut = await OpenedAsync(fake, GuestArchitecture.X86_64, "Broadwell-v1");
@@ -96,7 +96,8 @@ public class CpuModelSelectionTests
         sut.Architecture = GuestArchitecture.Aarch64;
         await sut.CpuModelsLoaded;
 
-        sut.CpuModel.Should().Be("host");
+        // "host" where this computer is Arm64, otherwise the machine default.
+        sut.CpuModel.Should().Be(CpuModelService.DefaultModelName(GuestArchitecture.Aarch64));
     }
 
     [AvaloniaFact]
@@ -126,7 +127,7 @@ public class CpuModelSelectionTests
     {
         var sut = await OpenedAsync(new FakeCpuModels(), GuestArchitecture.X86_64, "host", withQemu: false);
 
-        sut.CpuModels.Select(m => m.Name).Should().Equal("host");
+        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "");
         sut.HasCpuModelsNote.Should().BeTrue();
         sut.CpuModelsNote.Should().Contain("Installations");
     }
@@ -162,8 +163,65 @@ public class CpuModelSelectionTests
 
         sut.LoadVm(vm);
 
-        sut.CpuModels.Should().ContainSingle().Which.Name.Should().Be("host");
+        sut.CpuModels.Select(m => m.Name).Should().Equal("host", "");
         sut.SelectedCpuModel!.Name.Should().Be("host");
+    }
+
+    [AvaloniaFact]
+    public async Task AnUntouchedDefault_FollowsTheArchitecture()
+    {
+        // Needs one architecture this computer can run natively and one it cannot.
+        var native = Enum.GetValues<GuestArchitecture>().FirstOrDefault(a => HostPlatform.CanUseHostCpu(a));
+        var foreign = Enum.GetValues<GuestArchitecture>().FirstOrDefault(a => !HostPlatform.CanUseHostCpu(a));
+        if (!HostPlatform.CanUseHostCpu(native))
+        {
+            Assert.Skip("This computer has no guest architecture that can use -cpu host.");
+            return;
+        }
+
+        var sut = await OpenedAsync(new FakeCpuModels(), native, CpuModelService.DefaultModelName(native));
+        sut.CpuModel.Should().Be("host");
+
+        sut.Architecture = foreign;
+        await sut.CpuModelsLoaded;
+        sut.CpuModel.Should().Be("", "host cannot work across architectures, so the machine decides");
+
+        sut.Architecture = native;
+        await sut.CpuModelsLoaded;
+        sut.CpuModel.Should().Be("host", "back on the native architecture the default is host again");
+    }
+
+    [AvaloniaFact]
+    public async Task AnExplicitChoice_IsNotReplacedByTheDefault_WhenItIsStillValid()
+    {
+        var fake = new FakeCpuModels { [GuestArchitecture.X86_64] = X86, [GuestArchitecture.Aarch64] = Arm };
+        var sut = await OpenedAsync(fake, GuestArchitecture.X86_64, "max");
+
+        sut.Architecture = GuestArchitecture.Aarch64;
+        await sut.CpuModelsLoaded;
+        sut.Architecture = GuestArchitecture.X86_64;
+        await sut.CpuModelsLoaded;
+
+        sut.CpuModel.Should().Be("max");
+    }
+
+    [AvaloniaFact]
+    public async Task TheMachineDefault_IsOfferedAndShownByItsLabel()
+    {
+        var sut = await OpenedAsync(new FakeCpuModels { [GuestArchitecture.X86_64] = X86 }, GuestArchitecture.X86_64, "");
+
+        sut.SelectedCpuModel.Should().BeSameAs(CpuModelService.MachineDefault);
+        sut.SelectedCpuModel!.DisplayName.Should().Be("(machine default)");
+    }
+
+    [AvaloniaFact]
+    public async Task ChoosingTheMachineDefault_StoresAnEmptyModel()
+    {
+        var sut = await OpenedAsync(new FakeCpuModels { [GuestArchitecture.X86_64] = X86 }, GuestArchitecture.X86_64, "max");
+
+        sut.SelectedCpuModel = CpuModelService.MachineDefault;
+
+        sut.CpuModel.Should().BeEmpty();
     }
 
     private sealed class FakeCpuModels : CpuModelService

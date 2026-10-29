@@ -26,4 +26,9 @@
     <PackageReference Include="FluentAssertions" />
   </ItemGroup>
     
+  <!-- Real `qemu-system-<arch> -cpu help` output (QEMU 11.1), read by CpuModelDescriptionsTests. -->
+  <ItemGroup>
+    <Content Include="TestData\**\*.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

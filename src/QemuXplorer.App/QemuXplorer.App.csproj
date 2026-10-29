@@ -29,6 +29,8 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
   </ItemGroup>
     
