@@ -310,10 +310,7 @@ bash tools/build-macos-app.sh publish/osx-arm64 dist --version 1.2.3
 - `LSMinimumSystemVersion` is deliberately **not** set: the right floor depends on the .NET runtime
   that ships in the publish, and a wrong value would either block working systems or allow broken ones.
 - `--version` goes straight into XML, so the script accepts only `1`, `1.2`, `1.2.3` or `1.2.3.4`.
-- **CI:** the `macos-app` job in `.github/workflows/dotnet-desktop.yml` publishes `osx-arm64` and
-  `osx-x64`, builds the bundle (version `1.0.<run number>`), zips it with `ditto` (which keeps the
-  executable bit) and uploads it as an artifact. It `needs: build`, so it only runs once build and
-  test passed on all three platforms. It is **new and has not run yet**.
+- **CI:** the `macos` job builds both `osx-arm64` and `osx-x64`; see "CI" below.
 - The publish is a plain self-contained folder of about 270 files, not a single file or trimmed.
   Single-file would need native-library extraction handling on macOS; trimming risks breaking
   Avalonia's reflection and EF Core. Neither was tried.
@@ -478,12 +475,36 @@ Two packages are wired up but unused, so reach for them rather than adding a dep
   referenced by no project. Note it does not emulate SQLite's relational behaviour — prefer
   SQLite in-memory (`Data Source=:memory:`) for anything exercising the schema or migrations.
 
-## CI
+## CI and releases
 
-`.github/workflows/dotnet-desktop.yml` runs a real `matrix.os` fan-out across
-windows/ubuntu/macos with `fail-fast: false`, then restore → build → test. Keep the steps
-plain `dotnet` invocations with `${{ }}` expressions: the previous version used PowerShell
-`$env:` syntax, which is not the default shell on the Linux and macOS runners.
+`.github/workflows/dotnet-desktop.yml`:
+
+- **Every push (any branch) and PR to main:** `build` fans out over windows/ubuntu/macos
+  (`fail-fast: false`) with restore → build → test. Keep the steps plain `dotnet` invocations with
+  `${{ }}` expressions; PowerShell `$env:` syntax is not the default shell on Linux and macOS runners.
+- **Packaging** (`windows`, `linux`, `macos`) `needs: build`, so it runs only when tests passed on all
+  three platforms, and uploads artifacts on every push. Version: the tag without `v` for a release,
+  otherwise `1.0.<run number>`.
+  - Windows x64 and x86: `QemuXplorer-<v>-win-<arch>-portable.exe` (single file, self-extracting
+    natives, compressed), `-win-<arch>.zip` (self-contained folder) and `-win-<arch>-setup.exe`
+    (NSIS, `tools/windows-installer.nsi`; x64 refuses to run on 32-bit Windows).
+  - Linux amd64 and arm64: `qemuxplorer_<v>_<arch>.deb` from `tools/build-deb.sh`
+    (`/opt/qemuxplorer`, `/usr/bin/qemuxplorer` symlink, desktop entry, icons).
+  - macOS arm64 and x64: `QemuXplorer-<v>-<rid>.zip` containing the `.app` (unsigned except ad-hoc,
+    not notarized; see "macOS app bundle").
+- **Release:** pushing a tag matching `v<major>.<minor>.<patch>` runs the `release` job, which
+  downloads every artifact and runs `gh release create` with generated notes. Only plain numeric
+  tags trigger it, because the NSIS, deb and macOS version fields accept nothing else.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+- **Verified locally:** the single-file x64 portable exe starts and logs; the x64/x86 single-file
+  publish works; `build-deb.sh` stages correctly (the `dpkg-deb` here is BusyBox and cannot build,
+  and Git Bash cannot create symlinks). **Not run anywhere yet:** the NSIS installer, the real
+  `dpkg-deb` step, the `release` job and the workflow as a whole.
 
 ## Known rough edges (mention, don't silently fix)
 
