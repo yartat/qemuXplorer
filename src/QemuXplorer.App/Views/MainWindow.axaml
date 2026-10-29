@@ -4,6 +4,7 @@
         x:Class="QemuXplorer.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="QemuXplorer"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
         Width="1200" Height="780"
         MinWidth="900" MinHeight="560"
         Background="{DynamicResource AppCanvas}"

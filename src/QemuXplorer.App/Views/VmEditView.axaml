@@ -6,6 +6,7 @@
         x:Class="QemuXplorer.App.Views.VmEditView"
         x:DataType="vm:VmEditViewModel"
         Title="Edit machine"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
         Width="900" Height="720"
         MinWidth="760" MinHeight="560"
         WindowStartupLocation="CenterOwner"
@@ -96,7 +97,21 @@
               <StackPanel Orientation="Horizontal" Spacing="14">
                 <StackPanel Spacing="5">
                   <Label Content="Model"/>
-                  <TextBox Classes="mono" Width="150" Text="{Binding CpuModel}"/>
+                  <ComboBox Width="230" MaxDropDownHeight="360"
+                            ItemsSource="{Binding CpuModels}"
+                            SelectedItem="{Binding SelectedCpuModel}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="models:CpuModelInfo">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                          <TextBlock Classes="mono" Foreground="{DynamicResource AppText}"
+                                     Text="{Binding Name}"/>
+                          <TextBlock Classes="dim" FontSize="11" VerticalAlignment="Center"
+                                     TextTrimming="CharacterEllipsis"
+                                     Text="{Binding Description}"/>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
                 </StackPanel>
                 <StackPanel Spacing="5">
                   <Label Content="Sockets"/>
@@ -117,6 +132,15 @@
                            Foreground="{DynamicResource AppOk}"
                            Text="{Binding VcpuSummary}"/>
               </StackPanel>
+
+              <!-- Shown when the model list could not be read from QEMU. -->
+              <Border Background="{DynamicResource AppNoticeBg}"
+                      BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                      CornerRadius="5" Padding="12,10"
+                      IsVisible="{Binding HasCpuModelsNote}">
+                <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12"
+                           TextWrapping="Wrap" Text="{Binding CpuModelsNote}"/>
+              </Border>
             </StackPanel>
 
             <StackPanel Spacing="10">

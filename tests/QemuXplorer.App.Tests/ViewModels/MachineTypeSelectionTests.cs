@@ -30,7 +30,7 @@ public class MachineTypeSelectionTests
 
         var service = new VirtualMachineService(vmRepo, qemuRepo, argBuilder, processManager);
         scope.ServiceProvider.GetService(typeof(VirtualMachineService)).Returns(service);
-        return new VmEditViewModel(scopeFactory, argBuilder);
+        return new VmEditViewModel(scopeFactory, argBuilder, new CpuModelService());
     }
 
     private static VmEditViewModel LoadedWith(GuestArchitecture arch, string machineType)

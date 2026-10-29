@@ -48,8 +48,9 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 113 in Core.Tests (argument builder, machine and disk catalogs,
-disk image service) and 58 headless UI tests (view loading, machine picker, disk wizard).
+solution runs both test projects: 125 in Core.Tests (argument builder, machine and disk catalogs,
+disk image and CPU model services) and 77 headless UI tests (view loading, window icons, icon files,
+machine and CPU pickers, disk wizard).
 
 ## Package management
 
@@ -148,6 +149,33 @@ instead, because silently rewriting stored data on open hides the problem.
 The list is a snapshot of one build. Reading `-M help` from the selected installation at runtime
 would be strictly more correct and is the natural next step.
 
+## CPU models
+
+The editor's CPU "Model" is a picker, not a text box. `CpuModelService` fills it by running
+`qemu-system-<arch> -cpu help` from the default installation and parsing the `Available CPUs:`
+block (`CpuModelService.Parse`).
+
+- **The list depends on architecture and QEMU build, not on the machine type.** The output is
+  byte-identical for aarch64 under `virt`, `raspi3b` and `sbsa-ref`, so the picker is keyed on
+  architecture only. Whether a *machine* accepts a given CPU is decided when QEMU starts; nothing
+  here can tell you in advance.
+- **`host` is always first and is the default** (`CpuConfig.Model`, `CpuModelService.Host`), even
+  though most architectures do not list it. It only works with KVM, HVF or WHPX.
+- **Never rewrite a saved model just by opening the editor.** A saved value the build does not list
+  is kept and shown as "not listed by this QEMU build". Only an explicit *architecture change*
+  replaces an unlisted model with `host`, and only when the list was actually read: a failed probe
+  knows nothing, so it must not discard the user's choice.
+- Results are cached per binary for the process lifetime; failures are not cached. The shared load
+  deliberately ignores any one caller's cancellation token.
+- With no default installation, or if QEMU cannot be run, the picker degrades to `host` plus the
+  saved value and shows why in `CpuModelsNote`.
+- `QemuArgumentBuilder.GetBinaryName` is the one architecture-to-binary table and is public so the
+  probe uses it too.
+- Parsing stops at the first blank line. s390x follows the model list with "Recognized feature
+  flags" sections that would otherwise be read as hundreds of bogus models.
+- The list includes aliases and versioned variants (`Broadwell-IBRS`, `Broadwell-v3`), all valid
+  `-cpu` values. x86_64 reports 189, ppc64 416.
+
 ## Disks and the Add-disk wizard
 
 "Add disk..." in the editor's Storage tab opens `DiskWizardView` (three steps: source, details,
@@ -180,6 +208,68 @@ attach). It produces a `DiskDevice`; creating a new image runs `qemu-img create`
 - `qemu-img info` without `-f` reports a **fixed VHD as `raw`**, because the VHD footer sits at the
   end. Creation is correct and the app always passes `format=` explicitly, but
   `DiskImageService.GetImageInfoAsync` probes, so it can misreport such a file.
+
+## Application icon
+
+The icon is "Lens + Cube": an amber magnifier with a cube inside, on the dark rounded tile of the
+Control Room theme. Files live in `src/QemuXplorer.App/Assets/` and are **generated** by
+`tools/build-icons.ps1` (Windows PowerShell, GDI+). Edit the shape table in that script and re-run
+it; do not hand-edit the outputs.
+
+```powershell
+pwsh tools/build-icons.ps1
+```
+
+- One shape table renders `icon.svg`, `icon-512.png`, `icon-256.png`, `icon.ico` (16, 24, 32, 48,
+  64, 128, 256 px) and `icon.icns` (16 to 1024 px, with the @2x sizes), all PNG-compressed, so the
+  vector and the rasters cannot drift apart.
+- **`icon.icns` is written by the script, not by `iconutil`**, so it can be regenerated on Windows.
+  It uses the same type-to-size table `iconutil` emits (`icp4`, `ic11`, `icp5`, `ic12`, `ic07`,
+  `ic13`, `ic08`, `ic14`, `ic09`, `ic10`). It has been validated structurally (`IconFilesTests`) but
+  never opened on a Mac, so check it in Finder when the first macOS build exists.
+- Draw the lens handle as a **flat-started line plus a separate round end**. A single round-capped
+  line puts a cap wider than the ring at the junction, which shows as a bump at large sizes.
+- **32 px and below use a simplified drawing of the same mark** (thicker lens, a cube of three flat
+  faces, no thin edges). A 9-unit stroke is half a pixel at 16 px and smears into a blob. Raise
+  `$smallMax` in the script if a size needs the other drawing.
+- `QemuXplorer.App.csproj` sets `<ApplicationIcon>` to the `.ico` (the exe's icon, taskbar pins,
+  Alt-Tab) and embeds `icon-256.png` as an `AvaloniaResource` for the windows.
+- **Every `Window` must set `Icon="avares://QemuXplorer/Assets/icon-256.png"`.** A window without it
+  shows the generic Avalonia glyph and nothing fails to say so; `AppIconTests` checks every `Window`
+  subclass by reflection, and `IconFilesTests` checks the committed `.ico` and `.icns` structure.
+- On macOS the Dock icon comes from the `.app` bundle, not from the window `Icon`: running with
+  `dotnet run` shows the generic icon. See "macOS app bundle" below.
+
+## macOS app bundle
+
+`tools/build-macos-app.sh` assembles `QemuXplorer.app` from a self-contained publish:
+
+```bash
+dotnet publish src/QemuXplorer.App/QemuXplorer.App.csproj -c Release -r osx-arm64 --self-contained true -o publish/osx-arm64
+bash tools/build-macos-app.sh publish/osx-arm64 dist --version 1.2.3
+```
+
+- **The layout** is `Contents/Info.plist`, `Contents/MacOS/` (the whole publish folder; the
+  executable is `QemuXplorer`) and `Contents/Resources/icon.icns`. `CFBundleIconFile` is `icon`.
+- **It runs on any OS with bash.** Assembly is only `cp` plus a heredoc, so it was developed and
+  checked on Windows against a real `osx-arm64` publish: Mach-O executable, `Info.plist` parsed with
+  `plistlib`, icon byte-identical to the repo's. **It has never been launched on a Mac.**
+- **Signing needs `codesign`, which only exists on macOS.** Elsewhere the script builds the bundle
+  and warns that it is unsigned. On a Mac it signs ad-hoc by default, because **Apple Silicon will not
+  start an unsigned arm64 binary at all**; set `CODESIGN_IDENTITY` for a real Developer ID.
+- **Notarization is not done.** Without it Gatekeeper blocks an app downloaded from the internet;
+  locally, `xattr -dr com.apple.quarantine QemuXplorer.app` removes the block.
+- `BUNDLE_ID` defaults to `io.github.yartat.qemuxplorer`; override it with the environment variable.
+- `LSMinimumSystemVersion` is deliberately **not** set: the right floor depends on the .NET runtime
+  that ships in the publish, and a wrong value would either block working systems or allow broken ones.
+- `--version` goes straight into XML, so the script accepts only `1`, `1.2`, `1.2.3` or `1.2.3.4`.
+- **CI:** the `macos-app` job in `.github/workflows/dotnet-desktop.yml` publishes `osx-arm64` and
+  `osx-x64`, builds the bundle (version `1.0.<run number>`), zips it with `ditto` (which keeps the
+  executable bit) and uploads it as an artifact. It `needs: build`, so it only runs once build and
+  test passed on all three platforms. It is **new and has not run yet**.
+- The publish is a plain self-contained folder of about 270 files, not a single file or trimmed.
+  Single-file would need native-library extraction handling on macOS; trimming risks breaking
+  Avalonia's reflection and EF Core. Neither was tried.
 
 ## Dependency injection
 

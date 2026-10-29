@@ -5,6 +5,7 @@
         x:Class="QemuXplorer.App.Views.DiskWizardView"
         x:DataType="vm:DiskWizardViewModel"
         Title="Add disk"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
         Width="700" Height="680"
         MinWidth="620" MinHeight="540"
         WindowStartupLocation="CenterOwner"

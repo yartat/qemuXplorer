@@ -205,7 +205,8 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
             yield return token.ToString();
     }
 
-    private static string GetBinaryName(GuestArchitecture arch)
+    /// <summary>The qemu-system-* file name for an architecture, with .exe on Windows.</summary>
+    public static string GetBinaryName(GuestArchitecture arch)
     {
         var name = arch switch
         {

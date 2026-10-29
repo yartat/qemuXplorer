@@ -91,6 +91,7 @@ public class App : Application
         services.AddScoped<VirtualMachineService>();
         services.AddSingleton<QemuDiscoveryService>();
         services.AddSingleton<DiskImageService>();
+        services.AddSingleton<CpuModelService>();
 
         services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
 

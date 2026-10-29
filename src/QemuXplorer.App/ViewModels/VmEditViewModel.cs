@@ -13,6 +13,7 @@ namespace QemuXplorer.App.ViewModels;
 public partial class VmEditViewModel : ViewModelBase
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly CpuModelService _cpuModelService;
     private readonly IQemuArgumentBuilder _argBuilder;
     private VirtualMachine _vm;
 
@@ -133,12 +134,98 @@ public partial class VmEditViewModel : ViewModelBase
 
     public string VcpuSummary => $"= {CpuSockets * CpuCores * CpuThreads} vCPU";
 
+    /// <summary>CPU models the selected architecture's emulator reports, "host" first.</summary>
+    public ObservableCollection<CpuModelInfo> CpuModels { get; } = [];
+
+    [ObservableProperty]
+    private string _cpuModelsNote = string.Empty;
+
+    public bool HasCpuModelsNote => CpuModelsNote.Length > 0;
+
+    private Task _cpuModelsLoaded = Task.CompletedTask;
+
+    /// <summary>Completes when the CPU list for the current architecture has been applied.</summary>
+    public Task CpuModelsLoaded => _cpuModelsLoaded;
+
+    /// <summary>The picker's selection; setting it writes the model name through.</summary>
+    public CpuModelInfo? SelectedCpuModel
+    {
+        get => CpuModels.FirstOrDefault(m => m.Name == CpuModel);
+        set
+        {
+            if (value is not null && value.Name != CpuModel)
+                CpuModel = value.Name;
+        }
+    }
+
+    partial void OnCpuModelsNoteChanged(string value) => OnPropertyChanged(nameof(HasCpuModelsNote));
+
+    /// <param name="autoCorrect">
+    /// True only when the user changed architecture: a model the new emulator does not list is
+    /// replaced with "host". False when opening a saved machine, which must not be rewritten.
+    /// </param>
+    private async Task RefreshCpuModelsAsync(bool autoCorrect)
+    {
+        var architecture = Architecture;
+        var qemu = _qemu;
+        IReadOnlyList<CpuModelInfo> models = [CpuModelService.Host];
+        var note = string.Empty;
+        var known = false;
+
+        if (qemu is null)
+        {
+            note = "No default QEMU installation, so the available CPU models cannot be read. "
+                 + "Set one on the Installations page.";
+        }
+        else
+        {
+            try
+            {
+                models = await _cpuModelService.GetModelsAsync(qemu.BinaryDirectory, architecture);
+                known = true;
+            }
+            catch (Exception ex)
+            {
+                note = $"Could not read the CPU models from QEMU: {ex.Message}";
+            }
+        }
+
+        // The user changed architecture again while QEMU was being asked: this answer is stale.
+        if (architecture != Architecture)
+            return;
+
+        ApplyCpuModels(models, note, known, autoCorrect);
+        RefreshPreview();
+    }
+
+    private void ApplyCpuModels(IReadOnlyList<CpuModelInfo> models, string note, bool listIsKnown, bool autoCorrect)
+    {
+        // Only judge the saved model against a list we actually read; a failed probe knows nothing.
+        if (autoCorrect && listIsKnown && !models.Any(m => m.Name == CpuModel))
+            CpuModel = CpuModelService.Host.Name;
+
+        var list = models.ToList();
+        if (!string.IsNullOrWhiteSpace(CpuModel) && list.All(m => m.Name != CpuModel))
+            list.Add(new CpuModelInfo(CpuModel, "Saved value; not listed by this QEMU build"));
+
+        CpuModels.Clear();
+        foreach (var model in list)
+            CpuModels.Add(model);
+
+        CpuModelsNote = note;
+        OnPropertyChanged(nameof(SelectedCpuModel));
+    }
+
     public event EventHandler? CloseRequested;
 
-    public VmEditViewModel(IServiceScopeFactory scopeFactory, IQemuArgumentBuilder argBuilder)
+    public VmEditViewModel(
+        IServiceScopeFactory scopeFactory,
+        IQemuArgumentBuilder argBuilder,
+        CpuModelService cpuModelService)
     {
         _scopeFactory = scopeFactory;
         _argBuilder = argBuilder;
+        _cpuModelService = cpuModelService;
         _vm = new VirtualMachine();
 
         // Adding or removing a disk changes the command, but raises no property change.
@@ -150,14 +237,21 @@ public partial class VmEditViewModel : ViewModelBase
             // Computed properties are raised from here; re-entering for them would rebuild the
             // preview several times per keystroke.
             if (e.PropertyName is nameof(GeneratedCommand) or nameof(ArchSummary) or nameof(VcpuSummary)
-                or nameof(SelectedMachineType) or nameof(HasUnknownMachineType) or nameof(MachineTypeWarning))
+                or nameof(SelectedMachineType) or nameof(HasUnknownMachineType) or nameof(MachineTypeWarning)
+                or nameof(SelectedCpuModel) or nameof(HasCpuModelsNote))
                 return;
 
             if (e.PropertyName is nameof(Architecture) or nameof(MachineType))
                 OnPropertyChanged(nameof(ArchSummary));
 
             if (e.PropertyName is nameof(Architecture))
+            {
                 RebuildMachineTypes(autoCorrect: true);
+                _cpuModelsLoaded = RefreshCpuModelsAsync(autoCorrect: true);
+            }
+
+            if (e.PropertyName is nameof(CpuModel))
+                OnPropertyChanged(nameof(SelectedCpuModel));
 
             if (e.PropertyName is nameof(MachineType))
             {
@@ -179,6 +273,9 @@ public partial class VmEditViewModel : ViewModelBase
         _qemu = await vmService.GetDefaultInstallationAsync(ct);
         LoadVm(vm);
         RefreshPreview();
+
+        // After LoadVm so a saved model is kept; it is never rewritten just by opening the editor.
+        await (_cpuModelsLoaded = RefreshCpuModelsAsync(autoCorrect: false));
     }
 
     public void LoadVm(VirtualMachine vm)
@@ -222,6 +319,7 @@ public partial class VmEditViewModel : ViewModelBase
         foreach (var u in vm.UsbDevices) UsbDevices.Add(u);
 
         RebuildMachineTypes(autoCorrect: false);
+        ApplyCpuModels([CpuModelService.Host], note: string.Empty, listIsKnown: false, autoCorrect: false);
 
         _suppressPreview = false;
         OnPropertyChanged(nameof(ArchSummary));
