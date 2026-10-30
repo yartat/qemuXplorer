@@ -23,6 +23,10 @@ tell the wizard to put them.
 
 - It starts the `qemu-system-*` and `qemu-img` programs you have installed, with the arguments shown in
   the command preview. QEMU is a separate program with its own behaviour and its own privacy properties.
+- When you edit a disk, `qemu-img` changes the image file you chose, using the commands the dialog shows first.
+- To let you pick a USB device to pass through, it lists the USB devices plugged into this computer: it reads
+  `/sys/bus/usb` on Linux, asks PowerShell for the USB entries of the Windows device list, or runs `system_profiler`
+  on macOS. The list stays on this computer; only the vendor and product ids you pick are saved with the machine.
 - Network access happens only if you configure it: a disk attached over NBD, SSH or iSCSI makes QEMU
   connect to the host you typed, and a virtual machine's own network adapters carry that machine's traffic.
 - Secrets are not stored. A disk-encryption passphrase is a path to a file you own; the app saves the

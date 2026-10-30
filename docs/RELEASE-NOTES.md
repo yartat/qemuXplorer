@@ -9,26 +9,48 @@ Before tagging, rename that heading to the version and date (`## 1.1.0 (2026-12-
 
 ## Unreleased
 
-### Added
-- **Network adapters:** "Add adapter..." opens a wizard and "Edit..." (or a double-click) changes an adapter
-  according to its type: NAT with port forwarding and network settings, tap, bridge, and sockets
-  (listen, connect, multicast, UDP). Two more adapter models, vmxnet3 and pcnet.
-- **USB devices:** "Add device..." opens a wizard and "Edit..." changes a device according to its type: a
-  device from this computer (picked from a list of what is plugged in), a USB stick from an image file, tablet,
-  mouse, keyboard, audio, serial port, smart card reader, and the USB controller (USB 3, 2 or 1.1).
-- Existing machines keep their adapters and USB devices; a saved USB entry opens as a device from this computer.
+## 1.1.0 (2026-10-30)
+
+The Storage, Network and USB tabs now edit what is in them by its type.
 
 ### Added
-- **Edit disk:** "Edit..." (or a double-click) in a machine's Storage tab opens a dialog for the selected
-  disk. It changes how the disk attaches and, for local image files, changes the image through `qemu-img`:
-  resize, convert to another format, change or remove the backing file, change qcow2 settings and check or
-  repair. Each format shows only what it supports. The exact commands are shown for confirmation before they run.
+- **Edit disk.** "Edit..." (or a double-click) on a disk in a machine's Storage tab opens a dialog. It changes how
+  the disk attaches and, for local image files, changes the image through `qemu-img`: resize, convert to another
+  format, change or remove the backing file, change qcow2 settings, and check or repair. Each format shows only what
+  it supports. The exact commands are shown for confirmation before they run.
+- **Network adapters.** "Add adapter..." opens a wizard and "Edit..." changes an adapter according to its type: NAT
+  with port forwarding, subnet, DHCP, DNS, host name and isolation; tap; bridge; and sockets (listen, connect,
+  multicast, UDP). Two more adapter models, vmxnet3 and pcnet. A MAC address that does not clash with the machine's
+  other adapters is filled in for you.
+- **USB devices.** "Add device..." opens a wizard and "Edit..." changes a device according to its type: a device from
+  this computer (picked from a list of what is plugged in, by vendor and product or by bus and address), a USB stick
+  from an image file, tablet, mouse, keyboard, audio, serial port, smart card reader, and the USB controller (USB 3,
+  2 or 1.1).
+- The adapter model, audio driver, USB controller and a USB stick's image format each show a description of the
+  selected choice under the field.
+- In the Add adapter and Add USB device wizards, a double-click on a type does what Next does.
 
 ### Fixed
-- Add-disk wizard on Windows: qcow2 "falloc" and "full" preallocation failed with "Unsupported preallocation
-  mode" because QEMU on Windows cannot do them. They are no longer offered there (off and metadata remain).
-- A failed image creation no longer leaves a partial file behind that blocked the next attempt with
-  "already exists".
+- Add-disk wizard on Windows: qcow2 "falloc" and "full" preallocation failed with "Unsupported preallocation mode"
+  because QEMU on Windows cannot do them. They are no longer offered there (off and metadata remain).
+- A failed image creation no longer leaves a partial file behind that blocked the next attempt with "already exists".
+
+### Upgrading
+- The first start of this version upgrades your database automatically. Adapters and USB devices you already have
+  keep working, and a saved USB entry opens as a device from this computer.
+
+### Known limitations
+- Disks reached over the network (NBD, SSH, iSCSI) and encrypted (LUKS) images offer only how they attach in the Edit
+  dialog; their image is not changed from there.
+- A USB stick takes an existing image file; create one with the Add disk wizard first.
+- Multicast sockets do not work in QEMU on Windows, and the Windows build of QEMU has no bridge networking. The
+  dialogs warn about both.
+- A smart card reader waits for another program (such as vscclient) to supply the card on a TCP port.
+- The list of USB devices on macOS has not been tried on a real Mac, and macOS does not report bus and address.
+- Windows builds and the macOS app are not code-signed, and the macOS app is not notarized, so Windows SmartScreen and
+  macOS Gatekeeper warn on first start. The macOS app has not been launched on a real Mac yet.
+- Only `qemu-system-x86_64` is auto-detected; other architectures can be added by hand.
+- A virtual machine left running when the app closes is not shown again after a restart.
 
 ## 1.0.0 (2026-10-30)
 
