@@ -51,14 +51,25 @@ public static class DiskFormatCatalog
         "backing_fmt", "Backing format", "Format of the backing file; set it, or QEMU must probe",
         ImageOptionKind.Text);
 
+    /// <summary>
+    /// qcow2 preallocation modes the platform's QEMU can actually perform. On Windows the file driver
+    /// cannot resize with <c>falloc</c> or <c>full</c> (<c>qemu-img</c> 11.1 fails with "Unsupported
+    /// preallocation mode"), although <c>-o help</c> lists all four, so only the first two are offered.
+    /// </summary>
+    public static IReadOnlyList<string> Qcow2PreallocationModes(bool windows)
+        => windows ? ["off", "metadata"] : ["off", "metadata", "falloc", "full"];
+
     public static IReadOnlyList<DiskFormatInfo> All { get; } =
     [
         new(DiskFormat.QCow2, "qcow2", "qcow2",
             "QEMU copy-on-write v2/v3: snapshots, compression, thin provisioning",
             CanCreate: true, IsReadOnly: false,
             [
-                new("preallocation", "Preallocation", "How much space to reserve up front",
-                    ImageOptionKind.Choice, Choices: ["off", "metadata", "falloc", "full"]),
+                new("preallocation", "Preallocation",
+                    OperatingSystem.IsWindows()
+                        ? "How much space to reserve up front. QEMU on Windows cannot do falloc or full"
+                        : "How much space to reserve up front",
+                    ImageOptionKind.Choice, Choices: Qcow2PreallocationModes(OperatingSystem.IsWindows())),
                 new("cluster_size", "Cluster size", "Bytes per cluster, a power of two (e.g. 65536)",
                     ImageOptionKind.Text),
                 new("compat", "Compatibility", "v3 (1.1) is current; 0.10 is for ancient QEMU",

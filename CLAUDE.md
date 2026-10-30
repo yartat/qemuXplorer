@@ -48,7 +48,7 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 212 in Core.Tests (argument builder, machine and disk catalogs,
+solution runs both test projects: 215 in Core.Tests (argument builder, machine and disk catalogs,
 disk image, CPU model and CPU description services, repository) and 115 headless UI tests (view loading, window icons, icon files,
 machine and CPU pickers, disk wizard, logging).
 
@@ -250,6 +250,12 @@ attach). It produces a `DiskDevice`; creating a new image runs `qemu-img create`
 - **`qemu-img` comes from the default installation's directory** (`DiskImageService.ResolveQemuImg`).
   With no default installation the wizard cannot create images and says so.
 - `CreateImageAsync` refuses to overwrite an existing file; `qemu-img create` would do it silently.
+  If `qemu-img` fails (or the call is cancelled) it **deletes the partial file** it may have left, which
+  did not exist before the call; otherwise the retry would be refused as "already exists".
+- **qcow2 preallocation is `off`/`metadata` only on Windows.** `qemu-img create -o help` lists
+  `falloc` and `full`, but QEMU 11.1's Windows file driver fails with "Unsupported preallocation mode".
+  `DiskFormatCatalog.Qcow2PreallocationModes(windows)` is the single list. Do not trust `-o help` alone
+  for what works: try the option with a real `qemu-img` on the platform.
 - The wizard probes `qemu-img --help` for the block drivers the build has and **warns** (does not
   block) when NBD, SSH or iSCSI is missing. The dev machine's Windows QEMU 11.1 has no `iscsi`.
 - `qemu-img info` without `-f` reports a **fixed VHD as `raw`**, because the VHD footer sits at the

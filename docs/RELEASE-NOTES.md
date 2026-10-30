@@ -9,6 +9,12 @@ Before tagging, rename that heading to the version and date (`## 1.1.0 (2026-12-
 
 ## Unreleased
 
+### Fixed
+- Add-disk wizard on Windows: qcow2 "falloc" and "full" preallocation failed with "Unsupported preallocation
+  mode" because QEMU on Windows cannot do them. They are no longer offered there (off and metadata remain).
+- A failed image creation no longer leaves a partial file behind that blocked the next attempt with
+  "already exists".
+
 ## 1.0.0 (2026-10-30)
 
 First public release.

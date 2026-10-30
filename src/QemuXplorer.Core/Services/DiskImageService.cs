@@ -84,15 +84,45 @@ public sealed class DiskImageService
         foreach (var arg in BuildCreateArguments(request))
             psi.ArgumentList.Add(arg);
 
-        using var proc = StartProcess(psi);
-        var stderrTask = proc.StandardError.ReadToEndAsync(ct);
-        var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
-        await proc.WaitForExitAsync(ct);
-        var stderr = await stderrTask;
-        var stdout = await stdoutTask;
+        var created = false;
+        try
+        {
+            using var proc = StartProcess(psi);
+            var stderrTask = proc.StandardError.ReadToEndAsync(ct);
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+            await proc.WaitForExitAsync(ct);
+            var stderr = await stderrTask;
+            var stdout = await stdoutTask;
 
-        if (proc.ExitCode != 0)
-            throw new InvalidOperationException($"qemu-img create failed: {(stderr.Length > 0 ? stderr : stdout).Trim()}");
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException($"qemu-img create failed: {(stderr.Length > 0 ? stderr : stdout).Trim()}");
+
+            created = true;
+        }
+        finally
+        {
+            // qemu-img can leave a partial file behind when it fails after creating it, and the next
+            // attempt would then be refused as "already exists". The file did not exist before this call.
+            if (!created)
+                DeletePartialImage(request.Path);
+        }
+    }
+
+    private void DeletePartialImage(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Could not remove the partial image {Path}", path);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Could not remove the partial image {Path}", path);
+        }
     }
 
     /// <summary>
