@@ -104,10 +104,14 @@ jobs:
         cp publish/portable/QemuXplorer.exe "dist/QemuXplorer-$v-win-$a-portable.exe"
         (cd publish/folder && 7z a -tzip -mx=9 "../../dist/QemuXplorer-$v-win-$a.zip" . > /dev/null)
 
+    # The installer is only built for a release: installing NSIS and compressing the installer is the
+    # slowest part of this job, and the zip and the portable exe already show that the publish works.
     - name: Install NSIS
+      if: startsWith(github.ref, 'refs/tags/v')
       run: choco install nsis --no-progress -y
 
     - name: Build installer
+      if: startsWith(github.ref, 'refs/tags/v')
       run: |
         v='${{ steps.ver.outputs.version }}'
         a='${{ matrix.arch }}'

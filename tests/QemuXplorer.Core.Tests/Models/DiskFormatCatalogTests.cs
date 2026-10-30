@@ -26,6 +26,22 @@ public class DiskFormatCatalogTests
         ((int)DiskFormat.Vdi).Should().Be(5);
     }
 
+    [Fact]
+    public void Qcow2Preallocation_OnWindows_OffersOnlyWhatQemuCanDo()
+    {
+        // Real qemu-img on Windows fails with "Unsupported preallocation mode" for falloc and full.
+        DiskFormatCatalog.Qcow2PreallocationModes(windows: true).Should().Equal("off", "metadata");
+        DiskFormatCatalog.Qcow2PreallocationModes(windows: false).Should().Equal("off", "metadata", "falloc", "full");
+    }
+
+    [Fact]
+    public void Qcow2PreallocationChoices_AreThePlatformsList()
+    {
+        var option = DiskFormatCatalog.Get(DiskFormat.QCow2).CreateOptions.Single(o => o.Key == "preallocation");
+
+        option.Choices.Should().Equal(DiskFormatCatalog.Qcow2PreallocationModes(OperatingSystem.IsWindows()));
+    }
+
     [Theory]
     [InlineData(DiskFormat.Bochs)]
     [InlineData(DiskFormat.Cloop)]

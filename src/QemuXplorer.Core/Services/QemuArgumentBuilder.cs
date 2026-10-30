@@ -54,32 +54,13 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
         // Network adapters
         for (int i = 0; i < vm.NetworkAdapters.Count; i++)
         {
-            var nic = vm.NetworkAdapters[i];
-            var netId = $"net{i}";
-            args.Add("-netdev");
-            args.Add(BuildNetdev(nic, netId));
-
-            var device = new StringBuilder(NetworkModelName(nic.Model));
-            device.Append(",netdev=").Append(netId);
-            if (!string.IsNullOrWhiteSpace(nic.MacAddress))
-                device.Append(",mac=").Append(nic.MacAddress);
-            args.Add("-device");
-            args.Add(device.ToString());
+            args.AddRange(NetworkArguments(vm.NetworkAdapters[i], i));
         }
 
         // Display
         AddDisplay(args, vm.Display);
 
-        // USB devices
-        if (vm.UsbDevices.Count > 0)
-        {
-            args.Add("-usb");
-            foreach (var usb in vm.UsbDevices.Where(u => u.IsPassthrough))
-            {
-                args.Add("-device");
-                args.Add($"usb-host,vendorid=0x{usb.VendorId:x4},productid=0x{usb.ProductId:x4}");
-            }
-        }
+        AddUsb(args, vm.UsbDevices);
 
         // Extra arguments
         if (!string.IsNullOrWhiteSpace(vm.ExtraArguments))
@@ -133,6 +114,124 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
             args.Add($"nvme,drive={driveId},serial={driveId}");
         }
     }
+
+    /// <summary>The <c>-netdev</c> and <c>-device</c> pair for one adapter. Public so the editor can preview it.</summary>
+    public static IReadOnlyList<string> NetworkArguments(NetworkAdapter nic, int index)
+    {
+        var netId = $"net{index}";
+        var device = new StringBuilder(NetworkModelName(nic.Model));
+        device.Append(",netdev=").Append(netId);
+        if (!string.IsNullOrWhiteSpace(nic.MacAddress))
+            device.Append(",mac=").Append(nic.MacAddress);
+
+        return ["-netdev", BuildNetdev(nic, netId), "-device", device.ToString()];
+    }
+
+    /// <summary>Everything the USB entries add to the command line. Public so the editor can preview one.</summary>
+    public static IReadOnlyList<string> UsbArguments(IReadOnlyCollection<UsbDevice> devices)
+    {
+        var args = new List<string>();
+        AddUsb(args, devices);
+        return args;
+    }
+
+    private static void AddUsb(List<string> args, IReadOnlyCollection<UsbDevice> devices)
+    {
+        if (devices.Count == 0)
+            return;
+
+        // "Attached" is the old IsPassthrough flag, now meaning "include this entry" for every type.
+        var attached = devices.Where(d => d.IsPassthrough).ToList();
+
+        // An explicit controller replaces the machine's default one (-usb); two would only compete.
+        var controllers = attached.Where(d => d.DeviceType == UsbDeviceType.Controller).ToList();
+        if (controllers.Count == 0)
+            args.Add("-usb");
+        foreach (var controller in controllers)
+        {
+            args.Add("-device");
+            args.Add(UsbControllerName(controller.Controller));
+        }
+
+        var bootIndex = 0;
+        for (var i = 0; i < attached.Count; i++)
+        {
+            var usb = attached[i];
+            var canBoot = usb.DeviceType is UsbDeviceType.HostPassthrough or UsbDeviceType.Storage;
+            var boot = usb.IsBootDevice && canBoot ? $",bootindex={++bootIndex}" : string.Empty;
+
+            switch (usb.DeviceType)
+            {
+                case UsbDeviceType.HostPassthrough:
+                    args.Add("-device");
+                    args.Add(usb.HostBus > 0
+                        ? $"usb-host,hostbus={usb.HostBus},hostaddr={usb.HostAddress}{boot}"
+                        : $"usb-host,vendorid=0x{usb.VendorId:x4},productid=0x{usb.ProductId:x4}{boot}");
+                    break;
+
+                case UsbDeviceType.Storage:
+                    var driveId = $"usbdrive{i}";
+                    var drive = new StringBuilder($"if=none,id={driveId},file={EscapeOption(usb.ImagePath)}");
+                    drive.Append(",format=").Append(DiskFormatCatalog.QemuName(usb.ImageFormat));
+                    if (usb.IsReadOnly || DiskFormatCatalog.IsReadOnly(usb.ImageFormat)) drive.Append(",readonly=on");
+                    args.Add("-drive");
+                    args.Add(drive.ToString());
+                    args.Add("-device");
+                    args.Add($"usb-storage,drive={driveId}{(usb.IsRemovable ? ",removable=on" : string.Empty)}{boot}");
+                    break;
+
+                case UsbDeviceType.Tablet:
+                    args.Add("-device");
+                    args.Add("usb-tablet");
+                    break;
+
+                case UsbDeviceType.Mouse:
+                    args.Add("-device");
+                    args.Add("usb-mouse");
+                    break;
+
+                case UsbDeviceType.Keyboard:
+                    args.Add("-device");
+                    args.Add("usb-kbd");
+                    break;
+
+                case UsbDeviceType.Audio:
+                    var audioId = $"usbaudio{i}";
+                    args.Add("-audiodev");
+                    args.Add($"{(string.IsNullOrWhiteSpace(usb.AudioDriver) ? "none" : usb.AudioDriver.Trim())},id={audioId}");
+                    args.Add("-device");
+                    args.Add($"usb-audio,audiodev={audioId}");
+                    break;
+
+                case UsbDeviceType.Serial:
+                    var charId = $"usbserial{i}";
+                    args.Add("-chardev");
+                    args.Add(usb.SerialBackend switch
+                    {
+                        UsbSerialBackend.File => $"file,id={charId},path={EscapeOption(usb.SerialTarget)}",
+                        UsbSerialBackend.Tcp => $"socket,id={charId},host=127.0.0.1,port={usb.SerialPort},server=on,wait=off",
+                        _ => $"null,id={charId}"
+                    });
+                    args.Add("-device");
+                    args.Add($"usb-serial,chardev={charId}");
+                    break;
+
+                case UsbDeviceType.SmartCard:
+                    // The reader waits on a TCP port for a card from outside (vscclient). The emulated card
+                    // (backend=nss-emulated) was tried first and QEMU refused it: it needs an NSS database.
+                    var cardId = $"usbcard{i}";
+                    args.Add("-chardev");
+                    args.Add($"socket,id={cardId},host=127.0.0.1,port={usb.SerialPort},server=on,wait=off");
+                    args.Add("-device");
+                    args.Add("usb-ccid");
+                    args.Add("-device");
+                    args.Add($"ccid-card-passthru,chardev={cardId}");
+                    break;
+            }
+        }
+    }
+
+    private static string UsbControllerName(UsbControllerModel model) => UsbControllerCatalog.QemuName(model);
 
     // In QEMU option strings a literal comma is written as two.
     private static string EscapeOption(string value) => value.Replace(",", ",,");
@@ -250,24 +349,71 @@ public sealed class QemuArgumentBuilder : IQemuArgumentBuilder
         _                          => "writeback"
     };
 
-    private static string NetworkModelName(NetworkModel model) => model switch
-    {
-        NetworkModel.VirtIoNetPci => "virtio-net-pci",
-        NetworkModel.E1000        => "e1000",
-        NetworkModel.E1000E       => "e1000e",
-        NetworkModel.Rtl8139      => "rtl8139",
-        NetworkModel.Ne2kPci      => "ne2k_pci",
-        _                         => "virtio-net-pci"
-    };
+    // The device names live in one place, NetworkModelCatalog, so the descriptions shown next to them cannot drift.
+    private static string NetworkModelName(NetworkModel model) => NetworkModelCatalog.QemuName(model);
 
     private static string BuildNetdev(NetworkAdapter nic, string id) => nic.BackendType switch
     {
-        NetworkBackendType.User   => $"user,id={id}",
-        NetworkBackendType.Tap    => $"tap,id={id},ifname={nic.TapInterface},script=no,downscript=no",
-        NetworkBackendType.Bridge => $"bridge,id={id},br={nic.BridgeInterface}",
-        NetworkBackendType.Socket => $"socket,id={id}",
+        NetworkBackendType.User   => BuildUserNetdev(nic, id),
+        NetworkBackendType.Tap    => BuildTapNetdev(nic, id),
+        NetworkBackendType.Bridge => string.IsNullOrWhiteSpace(nic.BridgeInterface)
+            ? $"bridge,id={id}"
+            : $"bridge,id={id},br={EscapeOption(nic.BridgeInterface.Trim())}",
+        NetworkBackendType.Socket => BuildSocketNetdev(nic, id),
         _                         => $"user,id={id}"
     };
+
+    private static string BuildUserNetdev(NetworkAdapter nic, string id)
+    {
+        var netdev = new StringBuilder($"user,id={id}");
+        AppendIfSet(netdev, "net", nic.UserSubnet);
+        AppendIfSet(netdev, "dhcpstart", nic.UserDhcpStart);
+        AppendIfSet(netdev, "dns", nic.UserDns);
+        AppendIfSet(netdev, "hostname", nic.UserHostname);
+        if (nic.UserRestrict) netdev.Append(",restrict=on");
+        foreach (var rule in PortForwardRules.Parse(nic.HostForwardingRules))
+            netdev.Append(",hostfwd=").Append(EscapeOption(rule.ToHostFwd()));
+        return netdev.ToString();
+    }
+
+    // script=no keeps QEMU from running a helper nobody asked for; a script the user chose is passed through.
+    private static string BuildTapNetdev(NetworkAdapter nic, string id)
+    {
+        var netdev = new StringBuilder($"tap,id={id}");
+        AppendIfSet(netdev, "ifname", nic.TapInterface);
+        netdev.Append(",script=").Append(string.IsNullOrWhiteSpace(nic.TapScript) ? "no" : EscapeOption(nic.TapScript.Trim()));
+        netdev.Append(",downscript=").Append(string.IsNullOrWhiteSpace(nic.TapDownScript) ? "no" : EscapeOption(nic.TapDownScript.Trim()));
+        return netdev.ToString();
+    }
+
+    private static string BuildSocketNetdev(NetworkAdapter nic, string id)
+    {
+        var endpoint = $"{nic.SocketHost.Trim()}:{nic.SocketPort}";
+        var netdev = new StringBuilder($"socket,id={id}");
+        switch (nic.SocketMode)
+        {
+            case NetworkSocketMode.Connect:
+                netdev.Append(",connect=").Append(EscapeOption(endpoint));
+                break;
+            case NetworkSocketMode.Multicast:
+                netdev.Append(",mcast=").Append(EscapeOption(endpoint));
+                break;
+            case NetworkSocketMode.Udp:
+                netdev.Append(",udp=").Append(EscapeOption(endpoint));
+                netdev.Append(",localaddr=").Append(EscapeOption($"{nic.SocketLocalHost.Trim()}:{nic.SocketLocalPort}"));
+                break;
+            default:
+                netdev.Append(",listen=").Append(EscapeOption(endpoint));
+                break;
+        }
+        return netdev.ToString();
+    }
+
+    private static void AppendIfSet(StringBuilder builder, string key, string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            builder.Append(',').Append(key).Append('=').Append(EscapeOption(value.Trim()));
+    }
 
     private static string DisplayTypeName(DisplayType type) => type switch
     {

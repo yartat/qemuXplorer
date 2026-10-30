@@ -89,6 +89,35 @@ public class DiskImageServiceTests
     }
 
     [Fact]
+    public async Task CreateImageAsync_WhenQemuImgFailsAfterCreatingTheFile_RemovesThePartialFile()
+    {
+        var dir = Directory.CreateTempSubdirectory("qx-img-").FullName;
+        try
+        {
+            // A stand-in qemu-img that creates the target (its 4th argument), then fails.
+            var fake = Path.Combine(dir, OperatingSystem.IsWindows() ? "fake-qemu-img.cmd" : "fake-qemu-img");
+            if (OperatingSystem.IsWindows())
+                File.WriteAllLines(fake, ["@echo off", "type nul > \"%~4\"", "echo Unsupported preallocation mode 1>&2", "exit /b 1"]);
+            else
+            {
+                File.WriteAllLines(fake, ["#!/bin/sh", ": > \"$4\"", "echo Unsupported preallocation mode >&2", "exit 1"]);
+                File.SetUnixFileMode(fake, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            var target = Path.Combine(dir, "a.raw");
+            var sut = new DiskImageService(NullLogger<DiskImageService>.Instance);
+
+            var act = () => sut.CreateImageAsync(fake, new DiskCreateRequest(target, DiskFormat.Raw, 1));
+
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unsupported preallocation mode*");
+            File.Exists(target).Should().BeFalse("a failed attempt must not block the next one with 'already exists'");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void ParseSupportedDrivers_ReadsTheFormatListAndStopsAtProse()
     {
         const string help = "usage: qemu-img ...\n\nSupported image formats:\n\n  blkdebug bochs cloop nbd qcow2\n  raw ssh vdi\n\nSee <https://qemu.org/contribute/report-a-bug> for how to report bugs.\n";

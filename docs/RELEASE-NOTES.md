@@ -9,6 +9,27 @@ Before tagging, rename that heading to the version and date (`## 1.1.0 (2026-12-
 
 ## Unreleased
 
+### Added
+- **Network adapters:** "Add adapter..." opens a wizard and "Edit..." (or a double-click) changes an adapter
+  according to its type: NAT with port forwarding and network settings, tap, bridge, and sockets
+  (listen, connect, multicast, UDP). Two more adapter models, vmxnet3 and pcnet.
+- **USB devices:** "Add device..." opens a wizard and "Edit..." changes a device according to its type: a
+  device from this computer (picked from a list of what is plugged in), a USB stick from an image file, tablet,
+  mouse, keyboard, audio, serial port, smart card reader, and the USB controller (USB 3, 2 or 1.1).
+- Existing machines keep their adapters and USB devices; a saved USB entry opens as a device from this computer.
+
+### Added
+- **Edit disk:** "Edit..." (or a double-click) in a machine's Storage tab opens a dialog for the selected
+  disk. It changes how the disk attaches and, for local image files, changes the image through `qemu-img`:
+  resize, convert to another format, change or remove the backing file, change qcow2 settings and check or
+  repair. Each format shows only what it supports. The exact commands are shown for confirmation before they run.
+
+### Fixed
+- Add-disk wizard on Windows: qcow2 "falloc" and "full" preallocation failed with "Unsupported preallocation
+  mode" because QEMU on Windows cannot do them. They are no longer offered there (off and metadata remain).
+- A failed image creation no longer leaves a partial file behind that blocked the next attempt with
+  "already exists".
+
 ## 1.0.0 (2026-10-30)
 
 First public release.

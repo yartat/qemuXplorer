@@ -1,0 +1,258 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:QemuXplorer.App.ViewModels"
+        xmlns:models="using:QemuXplorer.Models"
+        xmlns:dtos="using:QemuXplorer.Models.Dtos"
+        x:Class="QemuXplorer.App.Views.UsbDeviceView"
+        x:DataType="vm:UsbDeviceViewModel"
+        Title="USB device"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
+        Width="720" Height="720"
+        MinWidth="620" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppCanvas}"
+        Foreground="{DynamicResource AppText}"
+        FontSize="13">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="48" Padding="16,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="pageTitle" VerticalAlignment="Center" Text="{Binding DialogTitle}"/>
+        <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" Text="{Binding StepTitle}"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+
+      <!-- Step 1: type -->
+      <ScrollViewer IsVisible="{Binding IsStep0}">
+        <StackPanel Margin="16,16" Spacing="10">
+          <TextBlock Classes="section" Text="WHAT DO YOU WANT TO ADD?"/>
+          <ListBox ItemsSource="{Binding TypeChoices}" SelectedItem="{Binding SelectedType}"
+                   Background="Transparent" DoubleTapped="OnTypeDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:UsbTypeChoice">
+                <StackPanel Spacing="3" Margin="4,6">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource AppText}"/>
+                  <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding Description}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 2: settings of the chosen type -->
+      <ScrollViewer IsVisible="{Binding IsStep1}">
+        <StackPanel Margin="16,16" Spacing="18">
+
+          <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding TypeDescription}"/>
+
+          <Border Background="{DynamicResource AppNoticeBg}"
+                  BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,9" IsVisible="{Binding HasWarning}">
+            <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding Warning}"/>
+          </Border>
+
+          <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasNoSettings}"
+                     Text="This device has no settings."/>
+
+          <!-- Host device -->
+          <StackPanel Spacing="12" IsVisible="{Binding IsHost}">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="section" Text="PLUGGED IN HERE"/>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding HostDevices}"
+                          SelectedItem="{Binding SelectedHostDevice}" PlaceholderText="Choose a device...">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="dtos:HostUsbDevice">
+                      <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Classes="tool" Content="Refresh" Command="{Binding RefreshHostsCommand}"/>
+              </Grid>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding HostListNote}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="IDENTIFY THE DEVICE"/>
+              <CheckBox Content="By physical port (bus and address) instead of vendor and product"
+                        IsChecked="{Binding UseBusAndAddress}"/>
+              <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding !ByPort}">
+                <StackPanel Spacing="5">
+                  <Label Content="Vendor id (hex)"/>
+                  <TextBox Classes="mono" Width="130" Text="{Binding VendorIdText}" PlaceholderText="046d"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Product id (hex)"/>
+                  <TextBox Classes="mono" Width="130" Text="{Binding ProductIdText}" PlaceholderText="c52b"/>
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding ByPort}">
+                <StackPanel Spacing="5">
+                  <Label Content="Bus"/>
+                  <NumericUpDown Width="120" Minimum="0" Maximum="255" FormatString="0" Value="{Binding HostBus}"/>
+                </StackPanel>
+                <StackPanel Spacing="5">
+                  <Label Content="Address"/>
+                  <NumericUpDown Width="120" Minimum="0" Maximum="255" FormatString="0" Value="{Binding HostAddress}"/>
+                </StackPanel>
+              </StackPanel>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap" Text="{Binding HostNote}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Storage -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsStorage}">
+            <TextBlock Classes="section" Text="IMAGE"/>
+            <ComboBox Width="260" ItemsSource="{Binding ImageFormats}" SelectedItem="{Binding ImageFormat}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:DiskFormatInfo">
+                  <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"
+                             ToolTip.Tip="{Binding Description}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding ImageFormatDescription}"/>
+            <Border Background="{DynamicResource AppNoticeBg}"
+                    BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,9" IsVisible="{Binding FormatIsReadOnly}">
+              <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                         Text="QEMU opens this format read-only, so the stick will always be read-only."/>
+            </Border>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Classes="mono" Text="{Binding ImagePath}" PlaceholderText="Full path to an existing image file"/>
+              <Button Grid.Column="1" Classes="tool" Content="Browse..." Command="{Binding BrowseImageCommand}"/>
+            </Grid>
+            <CheckBox Content="Read-only" IsChecked="{Binding IsReadOnly}" IsEnabled="{Binding CanEditReadOnly}"/>
+            <CheckBox Content="Removable (the guest can eject it)" IsChecked="{Binding IsRemovable}"/>
+          </StackPanel>
+
+          <!-- Audio -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsAudio}">
+            <TextBlock Classes="section" Text="AUDIO DRIVER"/>
+            <ComboBox Width="280" ItemsSource="{Binding AudioDriverChoices}" SelectedItem="{Binding SelectedAudioDriver}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:AudioDriverInfo">
+                  <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"
+                             ToolTip.Tip="{Binding Description}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"
+                       Text="{Binding AudioDriverDescription}"/>
+          </StackPanel>
+
+          <!-- Serial -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsSerial}">
+            <TextBlock Classes="section" Text="WHERE THE DATA GOES"/>
+            <ComboBox Width="220" ItemsSource="{Binding SerialBackends}" SelectedItem="{Binding SerialBackend}"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding SerialIsFile}">
+              <TextBox Classes="mono" Text="{Binding SerialTarget}" PlaceholderText="File to write"/>
+              <Button Grid.Column="1" Classes="tool" Content="Browse..." Command="{Binding BrowseSerialFileCommand}"/>
+            </Grid>
+            <StackPanel Spacing="5" IsVisible="{Binding SerialIsTcp}">
+              <Label Content="TCP port to listen on (127.0.0.1)"/>
+              <NumericUpDown Width="130" HorizontalAlignment="Left" Minimum="1" Maximum="65535" FormatString="0"
+                             Value="{Binding SerialPort}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Smart card -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsSmartCard}">
+            <TextBlock Classes="section" Text="CARD PORT"/>
+            <Label Content="TCP port the reader listens on (127.0.0.1)"/>
+            <NumericUpDown Width="130" HorizontalAlignment="Left" Minimum="1" Maximum="65535" FormatString="0"
+                           Value="{Binding SerialPort}"/>
+          </StackPanel>
+
+          <!-- Controller -->
+          <StackPanel Spacing="8" IsVisible="{Binding IsController}">
+            <TextBlock Classes="section" Text="CONTROLLER"/>
+            <ComboBox Width="280" ItemsSource="{Binding ControllerChoices}" SelectedItem="{Binding SelectedController}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:UsbControllerInfo">
+                  <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"
+                             ToolTip.Tip="{Binding Description}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"
+                       Text="{Binding ControllerDescription}"/>
+          </StackPanel>
+
+          <!-- Every type -->
+          <StackPanel Spacing="8">
+            <TextBlock Classes="section" Text="ENTRY"/>
+            <StackPanel Spacing="5">
+              <Label Content="Name (optional)"/>
+              <TextBox Width="320" HorizontalAlignment="Left" Text="{Binding Description}"/>
+            </StackPanel>
+            <CheckBox Content="Attach to the machine" IsChecked="{Binding IsAttached}"/>
+            <CheckBox Content="Boot from this device" IsChecked="{Binding IsBoot}" IsVisible="{Binding CanBoot}"/>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 3: review -->
+      <ScrollViewer IsVisible="{Binding IsStep2}">
+        <StackPanel Margin="16,16" Spacing="16">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="SUMMARY"/>
+            <Border Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <TextBlock Classes="mono" TextWrapping="Wrap" Text="{Binding Summary}"/>
+            </Border>
+          </StackPanel>
+          <Border Background="{DynamicResource AppNoticeBg}"
+                  BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,9" IsVisible="{Binding HasWarning}">
+            <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding Warning}"/>
+          </Border>
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="ADDS TO THE COMMAND"/>
+            <Border Background="{DynamicResource AppSurfaceAlt}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}" FontSize="11.5"
+                                   TextWrapping="Wrap" Text="{Binding CommandPreview}"/>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            MinHeight="30" Padding="16,6">
+      <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                 Foreground="{DynamicResource AppDanger}" Text="{Binding StatusMessage}"/>
+    </Border>
+
+    <Border Grid.Row="3"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Padding="16,10">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+        <Button Classes="tool" Content="Cancel" Command="{Binding CancelCommand}"/>
+        <Button Grid.Column="2" Classes="tool" Content="Back" Margin="0,0,8,0"
+                IsVisible="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Next"
+                IsVisible="{Binding ShowNext}" IsEnabled="{Binding CanGoNext}"
+                Command="{Binding NextCommand}"/>
+        <Button Grid.Column="4" Classes="primary" Content="Finish"
+                IsVisible="{Binding IsLastStep}" Command="{Binding FinishCommand}"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

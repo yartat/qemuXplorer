@@ -6,5 +6,8 @@ public enum NetworkModel
     E1000,
     E1000E,
     Rtl8139,
-    Ne2kPci
+    Ne2kPci,
+    // Appended: the model is stored as an integer, so existing members must keep their values.
+    Vmxnet3,
+    Pcnet
 }

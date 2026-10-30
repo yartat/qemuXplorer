@@ -111,5 +111,9 @@ public class App : Application
         // The VM editor is a dialog: one instance per invocation.
         services.AddTransient<VmEditViewModel>();
         services.AddTransient<DiskWizardViewModel>();
+        services.AddTransient<DiskEditViewModel>();
+        services.AddTransient<NetworkAdapterViewModel>();
+        services.AddTransient<UsbDeviceViewModel>();
+        services.AddSingleton<UsbHostService>();
     }
 }

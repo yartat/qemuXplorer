@@ -408,28 +408,73 @@ public partial class VmEditViewModel : ViewModelBase
         Disks.Add(disk);
     }
 
+    public bool HasSelectedDisk => SelectedDisk is not null;
+
+    partial void OnSelectedDiskChanged(DiskDevice? value) => OnPropertyChanged(nameof(HasSelectedDisk));
+
+    /// <summary>
+    /// Swaps in the disk the Edit dialog produced. Disks are plain objects with no change
+    /// notification, so the row is replaced rather than mutated.
+    /// </summary>
+    public void ReplaceDisk(DiskDevice old, DiskDevice replacement)
+    {
+        var index = Disks.IndexOf(old);
+        if (index < 0) return;
+        Disks[index] = replacement;
+        SelectedDisk = replacement;
+    }
+
     [RelayCommand]
     private void RemoveDisk(DiskDevice? disk)
     {
         if (disk is not null) Disks.Remove(disk);
     }
 
-    [RelayCommand]
-    private void AddNetworkAdapter()
+    public bool HasSelectedNetworkAdapter => SelectedNetworkAdapter is not null;
+    public bool HasSelectedUsbDevice => SelectedUsbDevice is not null;
+
+    partial void OnSelectedNetworkAdapterChanged(NetworkAdapter? value) => OnPropertyChanged(nameof(HasSelectedNetworkAdapter));
+    partial void OnSelectedUsbDeviceChanged(UsbDevice? value) => OnPropertyChanged(nameof(HasSelectedUsbDevice));
+
+    /// <summary>Adds an adapter produced by the Add adapter wizard.</summary>
+    public void AddNetworkAdapter(NetworkAdapter adapter)
     {
-        NetworkAdapters.Add(new NetworkAdapter { VmId = _vm.Id });
+        adapter.VmId = _vm.Id;
+        NetworkAdapters.Add(adapter);
+        SelectedNetworkAdapter = adapter;
+    }
+
+    /// <summary>Swaps in the adapter the edit dialog produced; entities do not notify, so the row is replaced.</summary>
+    public void ReplaceNetworkAdapter(NetworkAdapter old, NetworkAdapter replacement)
+    {
+        var index = NetworkAdapters.IndexOf(old);
+        if (index < 0) return;
+        replacement.VmId = _vm.Id;
+        NetworkAdapters[index] = replacement;
+        SelectedNetworkAdapter = replacement;
+    }
+
+    /// <summary>Adds a device produced by the Add USB device wizard.</summary>
+    public void AddUsbDevice(UsbDevice device)
+    {
+        device.VmId = _vm.Id;
+        UsbDevices.Add(device);
+        SelectedUsbDevice = device;
+    }
+
+    public void ReplaceUsbDevice(UsbDevice old, UsbDevice replacement)
+    {
+        var index = UsbDevices.IndexOf(old);
+        if (index < 0) return;
+        replacement.VmId = _vm.Id;
+        UsbDevices[index] = replacement;
+        SelectedUsbDevice = replacement;
     }
 
     [RelayCommand]
     private void RemoveNetworkAdapter(NetworkAdapter? adapter)
     {
         if (adapter is not null) NetworkAdapters.Remove(adapter);
-    }
-
-    [RelayCommand]
-    private void AddUsbDevice()
-    {
-        UsbDevices.Add(new UsbDevice { VmId = _vm.Id });
     }
 
     [RelayCommand]

@@ -33,6 +33,15 @@ public sealed record DiskFormatInfo(
 {
     public bool NeedsKeySecret => Format == DiskFormat.Luks;
 
+    // What qemu-img can do to an existing image of this format. Measured with qemu-img 11.1:
+    // resize works on raw, qcow2 and qed (qed cannot shrink), "rebase" on qcow2 and qed,
+    // "amend" on qcow2, and "check" on qcow2, qed, vdi, vmdk and vhdx. Everything can be converted.
+    public bool CanResize => Format is DiskFormat.QCow2 or DiskFormat.Raw or DiskFormat.Qed;
+    public bool CanShrink => Format is DiskFormat.QCow2 or DiskFormat.Raw;
+    public bool CanRebase => Format is DiskFormat.QCow2 or DiskFormat.Qed;
+    public bool CanAmend => Format == DiskFormat.QCow2;
+    public bool CanCheck => Format is DiskFormat.QCow2 or DiskFormat.Qed or DiskFormat.Vdi or DiskFormat.Vmdk or DiskFormat.Vhdx;
+
     public override string ToString() => Label;
 }
 
@@ -51,14 +60,36 @@ public static class DiskFormatCatalog
         "backing_fmt", "Backing format", "Format of the backing file; set it, or QEMU must probe",
         ImageOptionKind.Text);
 
+    /// <summary>
+    /// qcow2 preallocation modes the platform's QEMU can actually perform. On Windows the file driver
+    /// cannot resize with <c>falloc</c> or <c>full</c> (<c>qemu-img</c> 11.1 fails with "Unsupported
+    /// preallocation mode"), although <c>-o help</c> lists all four, so only the first two are offered.
+    /// </summary>
+    public static IReadOnlyList<string> Qcow2PreallocationModes(bool windows)
+        => windows ? ["off", "metadata"] : ["off", "metadata", "falloc", "full"];
+
+    /// <summary>The qcow2 settings <c>qemu-img amend</c> can change on an existing image.</summary>
+    public static IReadOnlyList<ImageOption> Qcow2AmendOptions { get; } =
+    [
+        new("compat", "Compatibility", "v3 (1.1) is current; 0.10 is for ancient QEMU",
+            ImageOptionKind.Choice, Choices: ["1.1", "0.10"]),
+        new("lazy_refcounts", "Lazy refcounts", "Postpone refcount updates: faster, slower crash recovery",
+            ImageOptionKind.Choice, Choices: ["on", "off"]),
+        new("refcount_bits", "Refcount bits", "Width of a reference count entry",
+            ImageOptionKind.Number)
+    ];
+
     public static IReadOnlyList<DiskFormatInfo> All { get; } =
     [
         new(DiskFormat.QCow2, "qcow2", "qcow2",
             "QEMU copy-on-write v2/v3: snapshots, compression, thin provisioning",
             CanCreate: true, IsReadOnly: false,
             [
-                new("preallocation", "Preallocation", "How much space to reserve up front",
-                    ImageOptionKind.Choice, Choices: ["off", "metadata", "falloc", "full"]),
+                new("preallocation", "Preallocation",
+                    OperatingSystem.IsWindows()
+                        ? "How much space to reserve up front. QEMU on Windows cannot do falloc or full"
+                        : "How much space to reserve up front",
+                    ImageOptionKind.Choice, Choices: Qcow2PreallocationModes(OperatingSystem.IsWindows())),
                 new("cluster_size", "Cluster size", "Bytes per cluster, a power of two (e.g. 65536)",
                     ImageOptionKind.Text),
                 new("compat", "Compatibility", "v3 (1.1) is current; 0.10 is for ancient QEMU",

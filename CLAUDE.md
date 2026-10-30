@@ -48,8 +48,8 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 212 in Core.Tests (argument builder, machine and disk catalogs,
-disk image, CPU model and CPU description services, repository) and 115 headless UI tests (view loading, window icons, icon files,
+solution runs both test projects: 333 in Core.Tests (argument builder, machine and disk catalogs,
+disk image, CPU model and CPU description services, repository) and 215 headless UI tests (view loading, window icons, icon files,
 machine and CPU pickers, disk wizard, logging).
 
 ## Package management
@@ -250,11 +250,96 @@ attach). It produces a `DiskDevice`; creating a new image runs `qemu-img create`
 - **`qemu-img` comes from the default installation's directory** (`DiskImageService.ResolveQemuImg`).
   With no default installation the wizard cannot create images and says so.
 - `CreateImageAsync` refuses to overwrite an existing file; `qemu-img create` would do it silently.
+  If `qemu-img` fails (or the call is cancelled) it **deletes the partial file** it may have left, which
+  did not exist before the call; otherwise the retry would be refused as "already exists".
+- **qcow2 preallocation is `off`/`metadata` only on Windows.** `qemu-img create -o help` lists
+  `falloc` and `full`, but QEMU 11.1's Windows file driver fails with "Unsupported preallocation mode".
+  `DiskFormatCatalog.Qcow2PreallocationModes(windows)` is the single list. Do not trust `-o help` alone
+  for what works: try the option with a real `qemu-img` on the platform.
 - The wizard probes `qemu-img --help` for the block drivers the build has and **warns** (does not
   block) when NBD, SSH or iSCSI is missing. The dev machine's Windows QEMU 11.1 has no `iscsi`.
 - `qemu-img info` without `-f` reports a **fixed VHD as `raw`**, because the VHD footer sits at the
   end. Creation is correct and the app always passes `format=` explicitly, but
   `DiskImageService.GetImageInfoAsync` probes, so it can misreport such a file.
+
+### Editing a disk
+
+"Edit..." (or a double-click on a row) in the Storage tab opens `DiskEditView`. The top half is how the disk
+attaches (interface, cache, boot, read-only, CD-ROM, snapshot); the rest changes the **image file** through
+`qemu-img`, and only offers what that format supports (`DiskFormatInfo.CanResize/CanShrink/CanRebase/CanAmend/CanCheck`,
+measured on QEMU 11.1, pinned by `FormatCapabilities_MatchWhatQemuImgDoes`):
+
+| Operation | Formats |
+|---|---|
+| resize | raw, qcow2, qed (qed cannot shrink); `--shrink` is passed only when the size goes down |
+| convert | all (writes a **new** file, keeps the original; the disk then points at the new file) |
+| rebase / remove backing file | qcow2, qed |
+| amend (`compat`, `lazy_refcounts`, `refcount_bits`) | qcow2 |
+| check, optionally `-r leaks` / `-r all` | qcow2, qed, vdi, vmdk, vhdx |
+
+- **Nothing runs until the exact commands have been shown and confirmed** (stages Editing, Confirming, Running,
+  Done). Commands run in a fixed order: check, amend, rebase, resize, convert (convert last, so it copies the
+  already-changed image). If a step fails, the steps that ran are deselected so a retry does not repeat them,
+  and a half-written convert output is deleted. Cancel is disabled while qemu-img runs: killing it halfway
+  through a resize can damage the image.
+- **The image changes immediately**, even if the machine's own dialog is cancelled afterwards. The review
+  step says so. `qemu-img` refuses an image a running machine holds open; that error is shown as is.
+- **Local, unencrypted files only.** Network disks (NBD/SSH/iSCSI) and LUKS images offer just the attach
+  settings, with a note. LUKS would need `--object secret` plumbing on every command.
+- The dialog works on a copy and returns a new `DiskDevice` (same `Id`, `VmId`, `Index`);
+  `VmEditViewModel.ReplaceDisk` swaps the row, because entities do not notify.
+- `qemu-img info` is called with `-f <format>` (`GetImageInfoAsync(..., format:)`) so a fixed VHD is not read as raw.
+- `Real_*` tests run the actual `qemu-img` and are skipped where it is not installed (`RealQemuImgFact` in
+  Core.Tests, `Assert.SkipUnless` in App.Tests). They are what keeps the capability table honest.
+- Not verified by eye: the dialog's layout has only been loaded headlessly, never looked at on screen.
+
+## Network adapters and USB devices
+
+"Add adapter..." / "Add device..." on the Network and USB tabs open a three-step wizard (type, settings,
+review with the command it adds); "Edit..." (or a double-click) opens the same window on the settings of the
+entry's own type, which cannot be changed, so only that type's fields appear. Both dialogs work on a copy and
+return a new entity with the same `Id`; `VmEditViewModel.Replace*`/`Add*` swap the row (entities do not notify).
+
+**Network** (`NetworkAdapterViewModel`): user/NAT (port forwards as JSON in `HostForwardingRules`, `net`, `dhcpstart`,
+`dns`, `hostname`, `restrict`), tap (`ifname`, scripts; blank means `script=no`), bridge, and socket
+(listen / connect / multicast / udp). The MAC is prefilled with a random `52:54:00:xx:xx:xx` that does not clash
+with the machine's others. `NetworkModel` gained `Vmxnet3` and `Pcnet`, appended (stored as an integer).
+
+**USB** (`UsbDeviceViewModel`): `UsbDeviceType` is host passthrough (by vendor/product, or by bus/address),
+storage from an image file, tablet, mouse, keyboard, audio, serial, smart card and controller. `IsPassthrough`
+is the old column and now means "attached" for every type, so entries from before types existed (type 0, a
+vendor and a product) still read as host devices. A controller entry replaces the default `-usb`.
+
+- **Each choice carries its own description**, so the dialogs can say when to pick it: `NetworkModelCatalog`
+  (also the one place the `-device` names live), `UsbControllerCatalog` (same), `AudioDriverCatalog` (the drivers
+  offered per operating system, the usual one first; a stored driver the list lacks is added on edit), and the
+  existing `DiskFormatCatalog` for a USB stick's image format. The description sits under the field and in each
+  item's tooltip. The descriptions are the app's own wording, not QEMU's: only the audio driver names were checked
+  against the real `-audiodev help`.
+- **Double-clicking a type on the first step of either wizard does what Next does**; a single click only selects, and a
+  double-click on empty space does nothing (the handler checks the click landed on a `ListBoxItem`). `WizardDoubleClickTests`
+  drives the real windows with real mouse input. That needed the Fluent theme in the headless test app (`HeadlessTestApp`):
+  without a theme a `ListBox` has no template and renders no items.
+- **`QemuArgumentBuilder.NetworkArguments` / `UsbArguments` are public** so a dialog can preview the exact lines.
+- **Measured against the real QEMU 11.1 on Windows** (`Real_Qemu_AcceptsTheGeneratedCommandLine` starts QEMU paused
+  with each generated command line; an invalid one exits at once with a message):
+  - **Multicast sockets cannot work on Windows** ("can't bind ip=230.0.0.1"); the dialog warns, and the test skips it there.
+  - **This Windows build has no `bridge` netdev** (`-netdev help` lists socket, stream, dgram, hubport, tap, user); the
+    dialog warns off Linux.
+  - **`ccid-card-emulated,backend=nss-emulated` fails** ("failed to initialize vcard") without an NSS database, so a smart
+    card is a `usb-ccid` reader plus `ccid-card-passthru` on a TCP port that another program (vscclient) feeds.
+  - `usb-host` for an absent device is accepted: it waits for the device to appear.
+- **Listing devices to pass through** (`UsbHostService`): Linux reads `/sys/bus/usb/devices` (interfaces and root hubs
+  skipped), Windows asks PowerShell for `Win32_PnPEntity` (`&MI_` interface entries skipped; one device arrives as a JSON
+  object, not a list), macOS parses `system_profiler SPUSBDataType -json`. **The macOS parser was tested only against a
+  hand-written fixture of the documented layout, never against a real Mac**, and macOS reports no bus/address. A failed
+  listing is a note, not an error: the ids can still be typed.
+- Bus/address are only filled from Linux; Windows and macOS identify by vendor and product.
+- USB storage takes an existing image only (create it in the Add-disk wizard first); LUKS is not offered.
+- `UpgradesFromThePreviousSchema` (`MachinesSavedBeforeThisMigration_...`) builds the database as the last release left it,
+  with a machine, then migrates: it guards the user's real data.
+- Not verified by eye: the dialogs have only been loaded headlessly, never looked at on screen. Tap and bridge were never run
+  against a real interface, and passthrough was never run against a real device.
 
 ## Application icon
 
@@ -487,7 +572,9 @@ Two packages are wired up but unused, so reach for them rather than adding a dep
   otherwise `1.0.<run number>`.
   - Windows x64 and x86: `QemuXplorer-<v>-win-<arch>-portable.exe` (single file, self-extracting
     natives, compressed), `-win-<arch>.zip` (self-contained folder) and `-win-<arch>-setup.exe`
-    (NSIS, `tools/windows-installer.nsi`; x64 refuses to run on 32-bit Windows).
+    (NSIS, `tools/windows-installer.nsi`; x64 refuses to run on 32-bit Windows). **The installer is built only on a
+    release tag**: NSIS is installed and run just then, so an ordinary push does not exercise `windows-installer.nsi`
+    and a mistake in it shows up only when tagging. Run `makensis` locally after editing the script.
   - Linux amd64 and arm64: `qemuxplorer_<v>_<arch>.deb` from `tools/build-deb.sh`
     (`/opt/qemuxplorer`, `/usr/bin/qemuxplorer` symlink, desktop entry, icons).
   - macOS arm64 and x64: `QemuXplorer-<v>-<rid>.zip` containing the `.app` (unsigned except ad-hoc,

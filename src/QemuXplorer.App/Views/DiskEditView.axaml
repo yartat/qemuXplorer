@@ -1,0 +1,254 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:QemuXplorer.App.ViewModels"
+        xmlns:models="using:QemuXplorer.Models"
+        x:Class="QemuXplorer.App.Views.DiskEditView"
+        x:DataType="vm:DiskEditViewModel"
+        Title="Edit disk"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
+        Width="760" Height="760"
+        MinWidth="640" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppCanvas}"
+        Foreground="{DynamicResource AppText}"
+        FontSize="13">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+    <!-- Header -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="48" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Classes="pageTitle" Text="Edit disk"/>
+        <TextBlock Grid.Column="1" Classes="mono" HorizontalAlignment="Right"
+                   VerticalAlignment="Center" Text="{Binding StageTitle}"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+
+      <!-- Editing -->
+      <ScrollViewer IsVisible="{Binding IsEditing}">
+        <StackPanel Margin="16,16" Spacing="18">
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="DISK"/>
+            <TextBlock Classes="mono" TextWrapping="Wrap" Text="{Binding FilePath}"/>
+            <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding ImageInfo}"/>
+          </StackPanel>
+
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="ATTACH AS"/>
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <StackPanel Spacing="5">
+                <Label Content="Interface"/>
+                <ComboBox Width="150" ItemsSource="{Binding Interfaces}"
+                          SelectedItem="{Binding SelectedInterface}"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Cache"/>
+                <ComboBox Width="170" ItemsSource="{Binding CacheModes}"
+                          SelectedItem="{Binding SelectedCache}"/>
+              </StackPanel>
+            </StackPanel>
+            <CheckBox Content="Boot from this disk" IsChecked="{Binding IsBoot}"/>
+            <CheckBox Content="Read-only" IsChecked="{Binding IsReadOnly}"
+                      IsEnabled="{Binding CanEditReadOnly}"/>
+            <CheckBox Content="Present as a CD-ROM" IsChecked="{Binding IsCdRom}"/>
+            <CheckBox Content="Snapshot mode (discard writes on exit)" IsChecked="{Binding IsSnapshot}"/>
+          </StackPanel>
+
+          <TextBlock Classes="section" Text="CHANGE THE IMAGE (QEMU-IMG)"/>
+
+          <Border Background="{DynamicResource AppNoticeBg}"
+                  BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,9" IsVisible="{Binding HasOperationsNote}">
+            <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding OperationsNote}"/>
+          </Border>
+
+          <!-- Resize -->
+          <StackPanel Spacing="8" IsVisible="{Binding CanResize}">
+            <CheckBox Content="Resize" IsChecked="{Binding ResizeEnabled}" FontWeight="SemiBold"/>
+            <StackPanel Spacing="8" Margin="24,0,0,0" IsVisible="{Binding ResizeEnabled}">
+              <TextBlock Classes="dim" FontSize="12" Text="{Binding CurrentSizeText}"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <NumericUpDown Width="150" Minimum="1" Increment="1" FormatString="0.##"
+                               Value="{Binding NewSizeValue}"/>
+                <ComboBox Width="90" ItemsSource="{Binding SizeUnits}" SelectedItem="{Binding NewSizeUnit}"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowPreallocation}">
+                <TextBlock Classes="dim" VerticalAlignment="Center" Width="110" Text="Preallocation"/>
+                <ComboBox Width="200" ItemsSource="{Binding PreallocationOption.ChoiceItems}"
+                          SelectedItem="{Binding PreallocationOption.SelectedChoice}"/>
+              </StackPanel>
+              <TextBlock Foreground="{DynamicResource AppDanger}" FontSize="12" TextWrapping="Wrap"
+                         IsVisible="{Binding IsShrinking}"
+                         Text="This shrinks the disk. Everything past the new end is discarded."/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                     IsVisible="{Binding ShowResizeNote}" Text="{Binding ResizeNote}"/>
+
+          <!-- Convert -->
+          <StackPanel Spacing="8" IsVisible="{Binding CanConvert}">
+            <CheckBox Content="Convert to another format" IsChecked="{Binding ConvertEnabled}" FontWeight="SemiBold"/>
+            <StackPanel Spacing="8" Margin="24,0,0,0" IsVisible="{Binding ConvertEnabled}">
+              <ComboBox Width="260" ItemsSource="{Binding ConvertFormats}" SelectedItem="{Binding ConvertFormat}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:DiskFormatInfo">
+                    <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBox Classes="mono" Text="{Binding ConvertPath}"
+                         PlaceholderText="Where to write the converted image"/>
+                <Button Grid.Column="1" Classes="tool" Content="Browse..."
+                        Command="{Binding BrowseConvertPathCommand}"/>
+              </Grid>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                         Text="The original file is kept. Options left at their defaults are not passed to qemu-img."/>
+              <ItemsControl ItemsSource="{Binding ConvertOptions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ImageOptionViewModel">
+                    <Grid ColumnDefinitions="150,230,*" Margin="0,3" ColumnSpacing="10">
+                      <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBox Grid.Column="1" Classes="mono" IsVisible="{Binding IsText}" Text="{Binding Value}"/>
+                      <ComboBox Grid.Column="1" Width="230" IsVisible="{Binding IsChoice}"
+                                ItemsSource="{Binding ChoiceItems}" SelectedItem="{Binding SelectedChoice}"/>
+                      <CheckBox Grid.Column="1" IsVisible="{Binding IsBool}" IsChecked="{Binding BoolValue}"/>
+                      <TextBlock Grid.Column="2" Classes="mono" FontSize="11" TextWrapping="Wrap"
+                                 VerticalAlignment="Center" Text="{Binding Description}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Rebase -->
+          <StackPanel Spacing="8" IsVisible="{Binding CanRebase}">
+            <CheckBox Content="Change the backing file" IsChecked="{Binding RebaseEnabled}" FontWeight="SemiBold"/>
+            <StackPanel Spacing="8" Margin="24,0,0,0" IsVisible="{Binding RebaseEnabled}">
+              <CheckBox Content="Remove the backing file (copy its data into this image)"
+                        IsChecked="{Binding RebaseFlatten}"/>
+              <StackPanel Spacing="8" IsVisible="{Binding !RebaseFlatten}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox Classes="mono" Text="{Binding BackingPath}" PlaceholderText="New backing file"/>
+                  <Button Grid.Column="1" Classes="tool" Content="Browse..."
+                          Command="{Binding BrowseBackingCommand}"/>
+                </Grid>
+                <ComboBox Width="260" ItemsSource="{Binding BackingFormats}" SelectedItem="{Binding BackingFormat}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:DiskFormatInfo">
+                      <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <CheckBox Content="Unsafe: only change the pointer, do not rewrite data"
+                          IsChecked="{Binding RebaseUnsafe}"/>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Amend -->
+          <StackPanel Spacing="8" IsVisible="{Binding CanAmend}">
+            <CheckBox Content="Change image settings" IsChecked="{Binding AmendEnabled}" FontWeight="SemiBold"/>
+            <StackPanel Spacing="4" Margin="24,0,0,0" IsVisible="{Binding AmendEnabled}">
+              <ItemsControl ItemsSource="{Binding AmendOptions}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ImageOptionViewModel">
+                    <Grid ColumnDefinitions="150,230,*" Margin="0,3" ColumnSpacing="10">
+                      <TextBlock Classes="dim" VerticalAlignment="Center" Text="{Binding Label}"/>
+                      <TextBox Grid.Column="1" Classes="mono" IsVisible="{Binding IsText}" Text="{Binding Value}"/>
+                      <ComboBox Grid.Column="1" Width="230" IsVisible="{Binding IsChoice}"
+                                ItemsSource="{Binding ChoiceItems}" SelectedItem="{Binding SelectedChoice}"/>
+                      <TextBlock Grid.Column="2" Classes="mono" FontSize="11" TextWrapping="Wrap"
+                                 VerticalAlignment="Center" Text="{Binding Description}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Check -->
+          <StackPanel Spacing="8" IsVisible="{Binding CanCheck}">
+            <CheckBox Content="Check for errors" IsChecked="{Binding CheckEnabled}" FontWeight="SemiBold"/>
+            <ComboBox Margin="24,0,0,0" Width="300" IsVisible="{Binding CheckEnabled}"
+                      ItemsSource="{Binding RepairModes}" SelectedItem="{Binding RepairMode}"/>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Review -->
+      <ScrollViewer IsVisible="{Binding IsConfirming}">
+        <StackPanel Margin="16,16" Spacing="14">
+          <TextBlock Classes="section" Text="THESE COMMANDS WILL RUN, IN THIS ORDER"/>
+          <Border Background="{DynamicResource AppSurfaceAlt}"
+                  BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,10">
+            <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}" FontSize="11.5"
+                                 TextWrapping="Wrap" Text="{Binding CommandPreview}"/>
+          </Border>
+          <Border Background="{DynamicResource AppNoticeBg}"
+                  BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,9" IsVisible="{Binding HasWarnings}">
+            <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding WarningText}"/>
+          </Border>
+          <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                     Text="The image file is changed as soon as you run this, even if you cancel the machine's own dialog afterwards. Stop the virtual machine first: qemu-img refuses to change an image that is in use."/>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Output -->
+      <Grid Margin="16,16" RowDefinitions="Auto,*" IsVisible="{Binding ShowLog}">
+        <TextBlock Classes="section" Text="OUTPUT"/>
+        <Border Grid.Row="1" Margin="0,8,0,0"
+                Background="{DynamicResource AppSurfaceAlt}"
+                BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                CornerRadius="5" Padding="12,10">
+          <ScrollViewer>
+            <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}" FontSize="11.5"
+                                 TextWrapping="Wrap" Text="{Binding Log}"/>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- Status / validation -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            MinHeight="30" Padding="16,6">
+      <Grid>
+        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{DynamicResource AppDanger}" Text="{Binding StatusMessage}"/>
+      </Grid>
+    </Border>
+
+    <!-- Buttons -->
+    <Border Grid.Row="3"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Padding="16,10">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <Button Classes="tool" Content="Cancel" Command="{Binding CancelCommand}"
+                IsEnabled="{Binding CanCancel}"/>
+        <Button Grid.Column="2" Classes="tool" Content="Back" Margin="0,0,8,0"
+                IsVisible="{Binding IsConfirming}" Command="{Binding BackCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="{Binding ApplyLabel}"
+                IsVisible="{Binding IsEditing}" Command="{Binding ApplyCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Run now"
+                IsVisible="{Binding IsConfirming}" Command="{Binding RunCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Close"
+                IsVisible="{Binding IsDone}" Command="{Binding CloseCommand}"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>

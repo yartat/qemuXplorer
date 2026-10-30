@@ -14,6 +14,9 @@ Define virtual machines in a GUI, keep them in a local SQLite database, preview 
 - SQLite-backed persistent configuration, created automatically on first run
 - Auto-detection of installed QEMU binaries in the usual locations
 - Generated command preview before launch
+- Wizards for network adapters (NAT with port forwarding, tap, bridge, sockets) and USB devices (passthrough picked from
+  what is plugged in, USB sticks, input devices, audio, serial, smart cards, controllers), each editable by its type
+- Edit a disk's image from the Storage tab: resize, convert, rebase, amend or check it with `qemu-img`
 - Clone an existing VM as a starting point for a new one
 
 ## Requirements

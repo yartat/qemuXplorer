@@ -1,0 +1,253 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:QemuXplorer.App.ViewModels"
+        xmlns:models="using:QemuXplorer.Models"
+        x:Class="QemuXplorer.App.Views.NetworkAdapterView"
+        x:DataType="vm:NetworkAdapterViewModel"
+        Title="Network adapter"
+        Icon="avares://QemuXplorer/Assets/icon-256.png"
+        Width="720" Height="700"
+        MinWidth="620" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppCanvas}"
+        Foreground="{DynamicResource AppText}"
+        FontSize="13">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="48" Padding="16,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="pageTitle" VerticalAlignment="Center" Text="{Binding DialogTitle}"/>
+        <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" Text="{Binding StepTitle}"/>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1">
+
+      <!-- Step 1: type -->
+      <ScrollViewer IsVisible="{Binding IsStep0}">
+        <StackPanel Margin="16,16" Spacing="10">
+          <TextBlock Classes="section" Text="WHAT KIND OF NETWORK?"/>
+          <ListBox ItemsSource="{Binding BackendChoices}" SelectedItem="{Binding SelectedBackend}"
+                   Background="Transparent" DoubleTapped="OnTypeDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:BackendChoice">
+                <StackPanel Spacing="3" Margin="4,6">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource AppText}"/>
+                  <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding Description}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 2: settings of the chosen type -->
+      <ScrollViewer IsVisible="{Binding IsStep1}">
+        <StackPanel Margin="16,16" Spacing="18">
+
+          <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding BackendDescription}"/>
+
+          <Border Background="{DynamicResource AppNoticeBg}"
+                  BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                  CornerRadius="5" Padding="12,9" IsVisible="{Binding HasWarning}">
+            <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                       Text="{Binding Warning}"/>
+          </Border>
+
+          <!-- The card every type has -->
+          <StackPanel Spacing="10">
+            <TextBlock Classes="section" Text="ADAPTER"/>
+            <StackPanel Spacing="5">
+              <Label Content="Model"/>
+              <ComboBox Width="300" HorizontalAlignment="Left" ItemsSource="{Binding ModelChoices}"
+                        SelectedItem="{Binding SelectedModel}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:NetworkModelInfo">
+                    <TextBlock Classes="mono" Text="{Binding Label}" Foreground="{DynamicResource AppText}"
+                               ToolTip.Tip="{Binding Description}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left"
+                         Text="{Binding ModelDescription}"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="MAC address (empty lets QEMU choose)"/>
+              <Grid ColumnDefinitions="260,Auto" ColumnSpacing="8" HorizontalAlignment="Left">
+                <TextBox Classes="mono" Text="{Binding MacAddress}" PlaceholderText="52:54:00:12:34:56"/>
+                <Button Grid.Column="1" Classes="tool" Content="Generate" Command="{Binding GenerateMacAddressCommand}"/>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- NAT -->
+          <StackPanel Spacing="14" IsVisible="{Binding IsUser}">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="PORT FORWARDING"/>
+              <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                         Text="Connections to a port on this computer are passed to a port in the guest."/>
+              <ItemsControl ItemsSource="{Binding Forwards}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PortForwardViewModel">
+                    <Grid ColumnDefinitions="80,150,100,150,100,Auto" ColumnSpacing="8" Margin="0,3">
+                      <ComboBox ItemsSource="{Binding $parent[Window].((vm:NetworkAdapterViewModel)DataContext).Protocols}"
+                                SelectedItem="{Binding Protocol}" Width="80"/>
+                      <TextBox Grid.Column="1" Classes="mono" Text="{Binding HostAddress}" PlaceholderText="host address"/>
+                      <NumericUpDown Grid.Column="2" Minimum="1" Maximum="65535" FormatString="0" Value="{Binding HostPort}"/>
+                      <TextBox Grid.Column="3" Classes="mono" Text="{Binding GuestAddress}" PlaceholderText="guest address"/>
+                      <NumericUpDown Grid.Column="4" Minimum="1" Maximum="65535" FormatString="0" Value="{Binding GuestPort}"/>
+                      <Button Grid.Column="5" Classes="tool danger" Content="Remove"
+                              Command="{Binding $parent[Window].((vm:NetworkAdapterViewModel)DataContext).RemoveForwardCommand}"
+                              CommandParameter="{Binding}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Classes="tool" Content="Add forward" HorizontalAlignment="Left"
+                      Command="{Binding AddForwardCommand}"/>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="NETWORK (OPTIONAL)"/>
+              <TextBlock Classes="mono" FontSize="11" Text="Left empty, QEMU uses 10.0.2.0/24 and its own DHCP and DNS."/>
+              <Grid ColumnDefinitions="200,260" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="6">
+                <TextBlock Classes="dim" VerticalAlignment="Center" Text="Network"/>
+                <TextBox Grid.Column="1" Classes="mono" Text="{Binding UserSubnet}" PlaceholderText="10.0.2.0/24"/>
+                <TextBlock Grid.Row="1" Classes="dim" VerticalAlignment="Center" Text="First DHCP address"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Classes="mono" Text="{Binding UserDhcpStart}" PlaceholderText="10.0.2.15"/>
+                <TextBlock Grid.Row="2" Classes="dim" VerticalAlignment="Center" Text="DNS server"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Classes="mono" Text="{Binding UserDns}" PlaceholderText="10.0.2.3"/>
+                <TextBlock Grid.Row="3" Classes="dim" VerticalAlignment="Center" Text="Guest host name"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Classes="mono" Text="{Binding UserHostname}"/>
+              </Grid>
+              <CheckBox Content="Isolate the guest from the host network (restrict)" IsChecked="{Binding UserRestrict}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Tap -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsTap}">
+            <TextBlock Classes="section" Text="TAP INTERFACE"/>
+            <StackPanel Spacing="5">
+              <Label Content="Interface name (empty lets QEMU create one)"/>
+              <TextBox Classes="mono" Width="260" HorizontalAlignment="Left" Text="{Binding TapInterface}" PlaceholderText="tap0"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="Up script (empty runs none)"/>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBox Classes="mono" Text="{Binding TapScript}"/>
+                <Button Grid.Column="1" Classes="tool" Content="Browse..." Command="{Binding BrowseTapScriptCommand}"/>
+              </Grid>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="Down script (empty runs none)"/>
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBox Classes="mono" Text="{Binding TapDownScript}"/>
+                <Button Grid.Column="1" Classes="tool" Content="Browse..." Command="{Binding BrowseTapDownScriptCommand}"/>
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Bridge -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsBridge}">
+            <TextBlock Classes="section" Text="BRIDGE"/>
+            <StackPanel Spacing="5">
+              <Label Content="Bridge name (empty uses QEMU's default, br0)"/>
+              <TextBox Classes="mono" Width="260" HorizontalAlignment="Left" Text="{Binding BridgeInterface}" PlaceholderText="br0"/>
+            </StackPanel>
+            <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                       Text="QEMU connects through qemu-bridge-helper, which must be allowed to use this bridge (/etc/qemu/bridge.conf)."/>
+          </StackPanel>
+
+          <!-- Socket -->
+          <StackPanel Spacing="10" IsVisible="{Binding IsSocket}">
+            <TextBlock Classes="section" Text="SOCKET"/>
+            <StackPanel Spacing="5">
+              <Label Content="Mode"/>
+              <ComboBox Width="220" ItemsSource="{Binding SocketModes}" SelectedItem="{Binding SocketMode}"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="{Binding SocketHostLabel}"/>
+              <TextBox Classes="mono" Width="300" HorizontalAlignment="Left" Text="{Binding SocketHost}"/>
+            </StackPanel>
+            <StackPanel Spacing="5">
+              <Label Content="Port"/>
+              <NumericUpDown Width="130" HorizontalAlignment="Left" Minimum="1" Maximum="65535" FormatString="0"
+                             Value="{Binding SocketPort}"/>
+            </StackPanel>
+            <StackPanel Spacing="10" IsVisible="{Binding IsSocketUdp}">
+              <StackPanel Spacing="5">
+                <Label Content="Local address"/>
+                <TextBox Classes="mono" Width="300" HorizontalAlignment="Left" Text="{Binding SocketLocalHost}"/>
+              </StackPanel>
+              <StackPanel Spacing="5">
+                <Label Content="Local port"/>
+                <NumericUpDown Width="130" HorizontalAlignment="Left" Minimum="1" Maximum="65535" FormatString="0"
+                               Value="{Binding SocketLocalPort}"/>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Step 3: review -->
+      <ScrollViewer IsVisible="{Binding IsStep2}">
+        <StackPanel Margin="16,16" Spacing="16">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="SUMMARY"/>
+            <Border Background="{DynamicResource AppSurface}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <TextBlock Classes="mono" TextWrapping="Wrap" Text="{Binding Summary}"/>
+            </Border>
+          </StackPanel>
+          <StackPanel Spacing="6" IsVisible="{Binding HasWarning}">
+            <Border Background="{DynamicResource AppNoticeBg}"
+                    BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,9">
+              <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12" TextWrapping="Wrap"
+                         Text="{Binding Warning}"/>
+            </Border>
+          </StackPanel>
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="ADDS TO THE COMMAND"/>
+            <Border Background="{DynamicResource AppSurfaceAlt}"
+                    BorderBrush="{DynamicResource AppBorder}" BorderThickness="1"
+                    CornerRadius="5" Padding="12,10">
+              <SelectableTextBlock FontFamily="{DynamicResource AppMonoFont}" FontSize="11.5"
+                                   TextWrapping="Wrap" Text="{Binding CommandPreview}"/>
+            </Border>
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            MinHeight="30" Padding="16,6">
+      <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                 Foreground="{DynamicResource AppDanger}" Text="{Binding StatusMessage}"/>
+    </Border>
+
+    <Border Grid.Row="3"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Padding="16,10">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+        <Button Classes="tool" Content="Cancel" Command="{Binding CancelCommand}"/>
+        <Button Grid.Column="2" Classes="tool" Content="Back" Margin="0,0,8,0"
+                IsVisible="{Binding CanGoBack}" Command="{Binding BackCommand}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Next"
+                IsVisible="{Binding ShowNext}" IsEnabled="{Binding CanGoNext}"
+                Command="{Binding NextCommand}"/>
+        <Button Grid.Column="4" Classes="primary" Content="Finish"
+                IsVisible="{Binding IsLastStep}" Command="{Binding FinishCommand}"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</Window>
