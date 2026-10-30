@@ -511,10 +511,11 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-- **Verified:** CI has built and packaged all targets (NSIS installer and `.deb` included). The
-  single-file x64 portable exe starts and logs locally. `build-deb.sh` builds with real `dpkg-deb`
-  under WSL Debian (this machine's Git Bash has a BusyBox `dpkg-deb` and no symlinks).
-  **Not yet exercised:** the `release` job, installing the `.deb`, running the NSIS installer.
+- **Verified:** CI has built and packaged all targets (NSIS installer and `.deb` included). On Windows
+  the portable exe and the NSIS installer were run by hand for both x64 and x86 and worked.
+  `build-deb.sh` builds with real `dpkg-deb` under WSL Debian (this machine's Git Bash has a BusyBox
+  `dpkg-deb` and no symlinks). The `release` job has run (v1.0.0).
+  **Not yet exercised:** installing the `.deb`, and the macOS app on a Mac.
 
 ## Known rough edges (mention, don't silently fix)
 
