@@ -572,7 +572,9 @@ Two packages are wired up but unused, so reach for them rather than adding a dep
   otherwise `1.0.<run number>`.
   - Windows x64 and x86: `QemuXplorer-<v>-win-<arch>-portable.exe` (single file, self-extracting
     natives, compressed), `-win-<arch>.zip` (self-contained folder) and `-win-<arch>-setup.exe`
-    (NSIS, `tools/windows-installer.nsi`; x64 refuses to run on 32-bit Windows).
+    (NSIS, `tools/windows-installer.nsi`; x64 refuses to run on 32-bit Windows). **The installer is built only on a
+    release tag**: NSIS is installed and run just then, so an ordinary push does not exercise `windows-installer.nsi`
+    and a mistake in it shows up only when tagging. Run `makensis` locally after editing the script.
   - Linux amd64 and arm64: `qemuxplorer_<v>_<arch>.deb` from `tools/build-deb.sh`
     (`/opt/qemuxplorer`, `/usr/bin/qemuxplorer` symlink, desktop entry, icons).
   - macOS arm64 and x64: `QemuXplorer-<v>-<rid>.zip` containing the `.app` (unsigned except ad-hoc,
