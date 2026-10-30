@@ -1,49 +1,236 @@
 name: QEMU Explorer
 
+# Every push (any branch) builds and tests on Windows, Linux and macOS and packages the app.
+# Pushing a tag like v1.2.3 additionally publishes a GitHub release with the packages attached.
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
+    tags: [ "v[0-9]+.[0-9]+.[0-9]+" ]
   pull_request:
     branches: [ "main" ]
 
+env:
+  SOLUTION: QemuXplorer.sln
+  APP_PROJECT: src/QemuXplorer.App/QemuXplorer.App.csproj
+
 jobs:
   build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
     strategy:
+      fail-fast: false
       matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
         configuration: [ Release ]
-
-    runs-on: [windows-latest, ubuntu-latest, macos-latest]
-
-    env:
-      Solution_Name: QEmuXlorer.sln
-      Test_Project_Path: QEmuXlorer.Core.Tests.csproj
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
-    # Install the .NET Core workload
-    - name: Install .NET Core
+    # Fail a release in the first seconds, not after ten minutes of packaging.
+    - name: Check release notes
+      if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
+      run: bash tools/release-notes.sh "${GITHUB_REF_NAME#v}" > /dev/null
+
+    - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.0.x
 
-    # Restore the application to populate the obj folder with RuntimeIdentifiers
-    - name: Restore the application
-      run: dotnet restore $env:Solution_Name -c $env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
 
-    # Publish the application to populate the obj folder with RuntimeIdentifiers
-    - name: Publish the application
-      run: dotnet publish $env:Solution_Name -c $env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Restore
+      run: dotnet restore ${{ env.SOLUTION }}
 
-    # Run tests
-    - name: Run tests
-      run: dotnet test $env:Solution_Name -c $env:Configuration --no-build
+    - name: Build
+      run: dotnet build ${{ env.SOLUTION }} -c ${{ matrix.configuration }} --no-restore
+
+    - name: Test
+      run: dotnet test ${{ env.SOLUTION }} -c ${{ matrix.configuration }} --no-build
+
+  # Packaging jobs run only once build and test passed on all three platforms, and they are
+  # separate jobs so a packaging problem cannot hide a test result.
+  #
+  # Version: the tag without its "v" for a release, 1.0.<run number> for any other push.
+
+  windows:
+    name: Windows ${{ matrix.arch }}
+    needs: build
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x64, x86 ]
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Version
+      id: ver
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="1.0.${{ github.run_number }}"; fi
+        echo "version=$v" >> "$GITHUB_OUTPUT"
+
+    # A self-contained folder: the base for the zip and for the installer.
+    - name: Publish (folder)
+      run: dotnet publish ${{ env.APP_PROJECT }} -c Release -r win-${{ matrix.arch }} --self-contained true -p:Version=${{ steps.ver.outputs.version }} -p:DebugType=none -o publish/folder
+
+    # One exe that unpacks its native libraries on first start; nothing to install.
+    - name: Publish (portable single file)
+      run: dotnet publish ${{ env.APP_PROJECT }} -c Release -r win-${{ matrix.arch }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:Version=${{ steps.ver.outputs.version }} -o publish/portable
+
+    - name: Package
+      run: |
+        v='${{ steps.ver.outputs.version }}'
+        a='${{ matrix.arch }}'
+        mkdir -p dist
+        cp publish/portable/QemuXplorer.exe "dist/QemuXplorer-$v-win-$a-portable.exe"
+        (cd publish/folder && 7z a -tzip -mx=9 "../../dist/QemuXplorer-$v-win-$a.zip" . > /dev/null)
+
+    - name: Install NSIS
+      run: choco install nsis --no-progress -y
+
+    - name: Build installer
+      run: |
+        v='${{ steps.ver.outputs.version }}'
+        a='${{ matrix.arch }}'
+        # NSIS wants four numeric parts in VIProductVersion; "-D" instead of "/D" keeps Git Bash
+        # from treating the argument as a path.
+        "/c/Program Files (x86)/NSIS/makensis.exe" -V2 "-DVERSION=$v" "-DARCH=$a" \
+          "-DSOURCE=$(cygpath -w "$PWD/publish/folder")" \
+          "-DOUTFILE=$(cygpath -w "$PWD/dist/QemuXplorer-$v-win-$a-setup.exe")" \
+          tools/windows-installer.nsi
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: QemuXplorer-win-${{ matrix.arch }}
+        path: dist/*
+        if-no-files-found: error
+
+  linux:
+    name: Linux deb (${{ matrix.arch }})
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-x64,   arch: amd64 }
+          - { rid: linux-arm64, arch: arm64 }
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Version
+      id: ver
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="1.0.${{ github.run_number }}"; fi
+        echo "version=$v" >> "$GITHUB_OUTPUT"
+
+    - name: Publish
+      run: dotnet publish ${{ env.APP_PROJECT }} -c Release -r ${{ matrix.rid }} --self-contained true -p:Version=${{ steps.ver.outputs.version }} -p:DebugType=none -o publish/${{ matrix.rid }}
+
+    - name: Build .deb
+      run: bash tools/build-deb.sh publish/${{ matrix.rid }} dist --version ${{ steps.ver.outputs.version }} --arch ${{ matrix.arch }}
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: QemuXplorer-deb-${{ matrix.arch }}
+        path: dist/*.deb
+        if-no-files-found: error
+
+  macos:
+    name: macOS app (${{ matrix.rid }})
+    needs: build
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [ osx-arm64, osx-x64 ]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Version
+      id: ver
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="1.0.${{ github.run_number }}"; fi
+        echo "version=$v" >> "$GITHUB_OUTPUT"
+
+    - name: Publish
+      run: dotnet publish ${{ env.APP_PROJECT }} -c Release -r ${{ matrix.rid }} --self-contained true -p:Version=${{ steps.ver.outputs.version }} -p:DebugType=none -o publish/${{ matrix.rid }}
+
+    - name: Build .app
+      run: bash tools/build-macos-app.sh publish/${{ matrix.rid }} dist/${{ matrix.rid }} --version ${{ steps.ver.outputs.version }}
+
+    # ditto keeps the executable bit and the bundle's layout, which a plain zip may not.
+    - name: Zip
+      run: ditto -c -k --keepParent dist/${{ matrix.rid }}/QemuXplorer.app dist/QemuXplorer-${{ steps.ver.outputs.version }}-${{ matrix.rid }}.zip
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: QemuXplorer-${{ matrix.rid }}
+        path: dist/QemuXplorer-*.zip
+        if-no-files-found: error
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ windows, linux, macos ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        pattern: QemuXplorer-*
+        path: dist
+        merge-multiple: true
+
+    # The body is the "## <version>" section of docs/RELEASE-NOTES.md.
+    - name: Create release
       env:
-        Configuration: ${{ matrix.configuration }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        ls -l dist
+        bash tools/release-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+        gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "QEMU Explorer ${GITHUB_REF_NAME#v}" --notes-file release-notes.md --verify-tag

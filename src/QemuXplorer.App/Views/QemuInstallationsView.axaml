@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:QemuXplorer.App.ViewModels"
+             x:Class="QemuXplorer.App.Views.QemuInstallationsView"
+             x:DataType="vm:QemuInstallationsViewModel"
+             Background="{DynamicResource AppCanvas}">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+    <Border Grid.Row="0"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="46" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <TextBlock Grid.Column="0" Classes="pageTitle" Text="QEMU installations"/>
+        <Button Grid.Column="2" Classes="tool" Content="Set default" Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                Command="{Binding SetDefaultCommand}"
+                CommandParameter="{Binding SelectedInstallation}"/>
+        <Button Grid.Column="3" Classes="primary" Content="Auto-detect"
+                VerticalAlignment="Center"
+                Command="{Binding AutoDetectCommand}"/>
+      </Grid>
+    </Border>
+
+    <DataGrid Grid.Row="1"
+              ItemsSource="{Binding Installations}"
+              SelectedItem="{Binding SelectedInstallation}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False"
+              HeadersVisibility="Column"
+              RowHeight="40"
+              Margin="8,0">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="VERSION" Binding="{Binding DetectedVersion}" Width="120">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="BINARY DIRECTORY" Binding="{Binding BinaryDirectory}" Width="*">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="PLATFORM" Binding="{Binding Platform}" Width="120"/>
+        <DataGridTextColumn Header="DEFAULT" Binding="{Binding IsDefault}" Width="110"/>
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Honest note about what detection can and cannot find -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource AppNoticeBg}"
+            BorderBrush="{DynamicResource AppNoticeBorder}" BorderThickness="1"
+            CornerRadius="5" Margin="16,16,16,0" Padding="14,12">
+      <StackPanel Spacing="3">
+        <TextBlock Foreground="{DynamicResource AppNoticeText}" FontSize="12.5"
+                   Text="Auto-detect only probes for qemu-system-x86_64"/>
+        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                   Text="It checks the standard directories for this platform. Builds for other architectures, and installs in unusual locations, must be added by hand."/>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="3"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Height="26" Padding="16,0" Margin="0,16,0,0">
+      <TextBlock Classes="mono" FontSize="10.5" VerticalAlignment="Center"
+                 Text="{Binding StatusMessage}"/>
+    </Border>
+
+  </Grid>
+</UserControl>

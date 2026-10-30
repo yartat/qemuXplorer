@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:QemuXplorer.App.ViewModels"
+             x:Class="QemuXplorer.App.Views.VirtualMachinesView"
+             x:DataType="vm:VirtualMachinesViewModel"
+             Background="{DynamicResource AppCanvas}">
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+    <!-- Title bar -->
+    <Border Grid.Row="0"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="46" Padding="16,0">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <TextBlock Grid.Column="0" Classes="pageTitle" Text="Machines"/>
+        <TextBlock Grid.Column="1" Classes="mono" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Text="{Binding CountSummary}"/>
+        <Button Grid.Column="3" Classes="primary" Content="New machine"
+                VerticalAlignment="Center"
+                Command="{Binding AddVmCommand}"/>
+      </Grid>
+    </Border>
+
+    <!-- Action strip -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource AppSurfaceAlt}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,0,0,1"
+            Height="38" Padding="16,0">
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Classes="tool" Content="Start"
+                Command="{Binding StartVmCommand}" CommandParameter="{Binding SelectedVm}"/>
+        <Button Classes="tool" Content="Stop"
+                Command="{Binding StopVmCommand}" CommandParameter="{Binding SelectedVm}"/>
+        <Border Width="1" Height="18" Background="{DynamicResource AppBorder}" Margin="4,0"/>
+        <Button Classes="tool" Content="Edit" Click="OnEditClicked"/>
+        <Button Classes="tool" Content="Clone"
+                Command="{Binding CloneVmCommand}" CommandParameter="{Binding SelectedVm}"/>
+        <Button Classes="tool danger" Content="Delete"
+                Command="{Binding DeleteVmCommand}" CommandParameter="{Binding SelectedVm}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Table -->
+    <DataGrid Grid.Row="2"
+              Name="vmDataGrid"
+              ItemsSource="{Binding VirtualMachines}"
+              SelectedItem="{Binding SelectedVm}"
+              IsReadOnly="True"
+              AutoGenerateColumns="False"
+              HeadersVisibility="Column"
+              Margin="8,0">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="NAME"    Binding="{Binding Name}" Width="*"/>
+        <DataGridTextColumn Header="ARCH"    Binding="{Binding Architecture}" Width="100">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="MACHINE" Binding="{Binding MachineType}" Width="110">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="VCPU"    Binding="{Binding Cpu.Count}" Width="100">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="MEMORY"  Binding="{Binding Memory.SizeMB, StringFormat='{}{0}M'}" Width="110">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="DISKS"   Binding="{Binding Disks.Count}" Width="100">
+          <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
+        </DataGridTextColumn>
+        <DataGridTextColumn Header="TEMPLATE" Binding="{Binding IsTemplate}" Width="110"/>
+      </DataGrid.Columns>
+    </DataGrid>
+
+    <!-- Status bar -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource AppRail}"
+            BorderBrush="{DynamicResource AppBorder}" BorderThickness="0,1,0,0"
+            Height="26" Padding="16,0">
+      <TextBlock Classes="mono" FontSize="10.5" VerticalAlignment="Center"
+                 Text="{Binding StatusMessage}"/>
+    </Border>
+
+  </Grid>
+</UserControl>
