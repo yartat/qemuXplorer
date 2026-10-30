@@ -48,8 +48,8 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 248 in Core.Tests (argument builder, machine and disk catalogs,
-disk image, CPU model and CPU description services, repository) and 145 headless UI tests (view loading, window icons, icon files,
+solution runs both test projects: 333 in Core.Tests (argument builder, machine and disk catalogs,
+disk image, CPU model and CPU description services, repository) and 215 headless UI tests (view loading, window icons, icon files,
 machine and CPU pickers, disk wizard, logging).
 
 ## Package management
@@ -292,6 +292,54 @@ measured on QEMU 11.1, pinned by `FormatCapabilities_MatchWhatQemuImgDoes`):
 - `Real_*` tests run the actual `qemu-img` and are skipped where it is not installed (`RealQemuImgFact` in
   Core.Tests, `Assert.SkipUnless` in App.Tests). They are what keeps the capability table honest.
 - Not verified by eye: the dialog's layout has only been loaded headlessly, never looked at on screen.
+
+## Network adapters and USB devices
+
+"Add adapter..." / "Add device..." on the Network and USB tabs open a three-step wizard (type, settings,
+review with the command it adds); "Edit..." (or a double-click) opens the same window on the settings of the
+entry's own type, which cannot be changed, so only that type's fields appear. Both dialogs work on a copy and
+return a new entity with the same `Id`; `VmEditViewModel.Replace*`/`Add*` swap the row (entities do not notify).
+
+**Network** (`NetworkAdapterViewModel`): user/NAT (port forwards as JSON in `HostForwardingRules`, `net`, `dhcpstart`,
+`dns`, `hostname`, `restrict`), tap (`ifname`, scripts; blank means `script=no`), bridge, and socket
+(listen / connect / multicast / udp). The MAC is prefilled with a random `52:54:00:xx:xx:xx` that does not clash
+with the machine's others. `NetworkModel` gained `Vmxnet3` and `Pcnet`, appended (stored as an integer).
+
+**USB** (`UsbDeviceViewModel`): `UsbDeviceType` is host passthrough (by vendor/product, or by bus/address),
+storage from an image file, tablet, mouse, keyboard, audio, serial, smart card and controller. `IsPassthrough`
+is the old column and now means "attached" for every type, so entries from before types existed (type 0, a
+vendor and a product) still read as host devices. A controller entry replaces the default `-usb`.
+
+- **Each choice carries its own description**, so the dialogs can say when to pick it: `NetworkModelCatalog`
+  (also the one place the `-device` names live), `UsbControllerCatalog` (same), `AudioDriverCatalog` (the drivers
+  offered per operating system, the usual one first; a stored driver the list lacks is added on edit), and the
+  existing `DiskFormatCatalog` for a USB stick's image format. The description sits under the field and in each
+  item's tooltip. The descriptions are the app's own wording, not QEMU's: only the audio driver names were checked
+  against the real `-audiodev help`.
+- **Double-clicking a type on the first step of either wizard does what Next does**; a single click only selects, and a
+  double-click on empty space does nothing (the handler checks the click landed on a `ListBoxItem`). `WizardDoubleClickTests`
+  drives the real windows with real mouse input. That needed the Fluent theme in the headless test app (`HeadlessTestApp`):
+  without a theme a `ListBox` has no template and renders no items.
+- **`QemuArgumentBuilder.NetworkArguments` / `UsbArguments` are public** so a dialog can preview the exact lines.
+- **Measured against the real QEMU 11.1 on Windows** (`Real_Qemu_AcceptsTheGeneratedCommandLine` starts QEMU paused
+  with each generated command line; an invalid one exits at once with a message):
+  - **Multicast sockets cannot work on Windows** ("can't bind ip=230.0.0.1"); the dialog warns, and the test skips it there.
+  - **This Windows build has no `bridge` netdev** (`-netdev help` lists socket, stream, dgram, hubport, tap, user); the
+    dialog warns off Linux.
+  - **`ccid-card-emulated,backend=nss-emulated` fails** ("failed to initialize vcard") without an NSS database, so a smart
+    card is a `usb-ccid` reader plus `ccid-card-passthru` on a TCP port that another program (vscclient) feeds.
+  - `usb-host` for an absent device is accepted: it waits for the device to appear.
+- **Listing devices to pass through** (`UsbHostService`): Linux reads `/sys/bus/usb/devices` (interfaces and root hubs
+  skipped), Windows asks PowerShell for `Win32_PnPEntity` (`&MI_` interface entries skipped; one device arrives as a JSON
+  object, not a list), macOS parses `system_profiler SPUSBDataType -json`. **The macOS parser was tested only against a
+  hand-written fixture of the documented layout, never against a real Mac**, and macOS reports no bus/address. A failed
+  listing is a note, not an error: the ids can still be typed.
+- Bus/address are only filled from Linux; Windows and macOS identify by vendor and product.
+- USB storage takes an existing image only (create it in the Add-disk wizard first); LUKS is not offered.
+- `UpgradesFromThePreviousSchema` (`MachinesSavedBeforeThisMigration_...`) builds the database as the last release left it,
+  with a machine, then migrates: it guards the user's real data.
+- Not verified by eye: the dialogs have only been loaded headlessly, never looked at on screen. Tap and bridge were never run
+  against a real interface, and passthrough was never run against a real device.
 
 ## Application icon
 

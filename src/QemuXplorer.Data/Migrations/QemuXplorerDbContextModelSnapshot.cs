@@ -107,7 +107,51 @@ namespace QemuXplorer.Data.Migrations
                     b.Property<int>("Model")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("SocketHost")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SocketLocalHost")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SocketLocalPort")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SocketMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SocketPort")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TapDownScript")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TapInterface")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TapScript")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserDhcpStart")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserDns")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserHostname")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("UserRestrict")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserSubnet")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -157,15 +201,57 @@ namespace QemuXplorer.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AudioDriver")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Controller")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DeviceType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HostAddress")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HostBus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ImageFormat")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsBootDevice")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsPassthrough")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsReadOnly")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRemovable")
                         .HasColumnType("INTEGER");
 
                     b.Property<ushort>("ProductId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int>("SerialBackend")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SerialPort")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SerialTarget")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<ushort>("VendorId")
                         .HasColumnType("INTEGER");

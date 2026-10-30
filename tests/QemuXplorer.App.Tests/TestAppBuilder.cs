@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Headless;
+using Avalonia.Themes.Fluent;
 using QemuXplorer.App.Tests;
 
 [assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
@@ -19,4 +20,11 @@ public static class TestAppBuilder
             .UseHeadless(new AvaloniaHeadlessPlatformOptions());
 }
 
-public sealed class HeadlessTestApp : Application;
+/// <summary>
+/// The Fluent theme is loaded so controls get their templates: without it a ListBox renders no items,
+/// and a test that clicks one has nothing to click. QemuXplorer's own theme is not needed for that.
+/// </summary>
+public sealed class HeadlessTestApp : Application
+{
+    public HeadlessTestApp() => Styles.Add(new FluentTheme());
+}

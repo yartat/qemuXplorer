@@ -112,5 +112,8 @@ public class App : Application
         services.AddTransient<VmEditViewModel>();
         services.AddTransient<DiskWizardViewModel>();
         services.AddTransient<DiskEditViewModel>();
+        services.AddTransient<NetworkAdapterViewModel>();
+        services.AddTransient<UsbDeviceViewModel>();
+        services.AddSingleton<UsbHostService>();
     }
 }

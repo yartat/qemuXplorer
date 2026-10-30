@@ -40,3 +40,35 @@ public sealed class RealQemuImgFactAttribute : FactAttribute
             Skip = "qemu-img is not installed on this machine";
     }
 }
+
+/// <summary>The qemu-system-x86_64 next to the qemu-img found above, if any.</summary>
+public static class RealQemuSystem
+{
+    public static string? Path { get; } = Find();
+
+    private static string? Find()
+    {
+        if (RealQemuImg.Path is null) return null;
+        var exe = OperatingSystem.IsWindows() ? "qemu-system-x86_64.exe" : "qemu-system-x86_64";
+        var path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(RealQemuImg.Path)!, exe);
+        return File.Exists(path) ? path : null;
+    }
+}
+
+public sealed class RealQemuSystemFactAttribute : FactAttribute
+{
+    public RealQemuSystemFactAttribute()
+    {
+        if (RealQemuSystem.Path is null)
+            Skip = "qemu-system-x86_64 is not installed on this machine";
+    }
+}
+
+public sealed class RealQemuSystemTheoryAttribute : TheoryAttribute
+{
+    public RealQemuSystemTheoryAttribute()
+    {
+        if (RealQemuSystem.Path is null)
+            Skip = "qemu-system-x86_64 is not installed on this machine";
+    }
+}

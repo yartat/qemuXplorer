@@ -30,6 +30,76 @@ public partial class VmEditView : Window
             editVm.ReplaceDisk(disk, edited);
     }
 
+    private async void OnAddNetworkClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not VmEditViewModel editVm || App.Services is not { } services)
+            return;
+
+        var dialogVm = services.GetRequiredService<NetworkAdapterViewModel>();
+        dialogVm.InitializeForAdd(editVm.NetworkAdapters);
+        var dialog = new NetworkAdapterView { DataContext = dialogVm };
+        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
+
+        if (dialogVm.Result is { } adapter)
+            editVm.AddNetworkAdapter(adapter);
+    }
+
+    private async void OnEditNetworkClicked(object? sender, RoutedEventArgs e) => await EditSelectedNetworkAsync();
+
+    private async void OnNetworkDoubleTapped(object? sender, TappedEventArgs e) => await EditSelectedNetworkAsync();
+
+    private async Task EditSelectedNetworkAsync()
+    {
+        if (DataContext is not VmEditViewModel editVm || editVm.SelectedNetworkAdapter is not { } adapter || App.Services is not { } services)
+            return;
+
+        var dialogVm = services.GetRequiredService<NetworkAdapterViewModel>();
+        dialogVm.InitializeForEdit(adapter);
+        var dialog = new NetworkAdapterView { DataContext = dialogVm };
+        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
+
+        if (dialogVm.Result is { } edited)
+            editVm.ReplaceNetworkAdapter(adapter, edited);
+    }
+
+    private async void OnAddUsbClicked(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not VmEditViewModel editVm || App.Services is not { } services)
+            return;
+
+        var dialogVm = services.GetRequiredService<UsbDeviceViewModel>();
+        dialogVm.InitializeForAdd();
+        var dialog = new UsbDeviceView { DataContext = dialogVm };
+        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
+
+        if (dialogVm.Result is { } device)
+            editVm.AddUsbDevice(device);
+    }
+
+    private async void OnEditUsbClicked(object? sender, RoutedEventArgs e) => await EditSelectedUsbAsync();
+
+    private async void OnUsbDoubleTapped(object? sender, TappedEventArgs e) => await EditSelectedUsbAsync();
+
+    private async Task EditSelectedUsbAsync()
+    {
+        if (DataContext is not VmEditViewModel editVm || editVm.SelectedUsbDevice is not { } device || App.Services is not { } services)
+            return;
+
+        var dialogVm = services.GetRequiredService<UsbDeviceViewModel>();
+        dialogVm.InitializeForEdit(device);
+        if (device.DeviceType == Models.Enums.UsbDeviceType.HostPassthrough)
+            _ = dialogVm.LoadHostDevicesAsync();
+        var dialog = new UsbDeviceView { DataContext = dialogVm };
+        dialogVm.CloseRequested += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
+
+        if (dialogVm.Result is { } edited)
+            editVm.ReplaceUsbDevice(device, edited);
+    }
+
     private async void OnAddDiskClicked(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not VmEditViewModel editVm || App.Services is not { } services)

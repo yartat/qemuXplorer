@@ -206,7 +206,8 @@
         <Grid RowDefinitions="*,Auto" Margin="12,12">
           <DataGrid Grid.Row="0" ItemsSource="{Binding NetworkAdapters}"
                     SelectedItem="{Binding SelectedNetworkAdapter}"
-                    AutoGenerateColumns="False" HeadersVisibility="Column">
+                    AutoGenerateColumns="False" HeadersVisibility="Column"
+                    DoubleTapped="OnNetworkDoubleTapped">
             <DataGrid.Columns>
               <DataGridTemplateColumn Header="BACKEND" Width="130">
                 <DataGridTemplateColumn.CellTemplate>
@@ -218,11 +219,14 @@
                   <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding Model}"/></DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="MAC" Binding="{Binding MacAddress}" Width="*"/>
+              <DataGridTextColumn Header="MAC" Binding="{Binding MacAddress}" Width="170"/>
+              <DataGridTextColumn Header="DETAILS" Binding="{Binding Summary}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,10,0,0">
-            <Button Classes="tool" Content="Add adapter" Command="{Binding AddNetworkAdapterCommand}"/>
+            <Button Classes="tool" Content="Add adapter..." Click="OnAddNetworkClicked"/>
+            <Button Classes="tool" Content="Edit..." Click="OnEditNetworkClicked"
+                    IsEnabled="{Binding HasSelectedNetworkAdapter}"/>
             <Button Classes="tool danger" Content="Remove" Command="{Binding RemoveNetworkAdapterCommand}"
                     CommandParameter="{Binding SelectedNetworkAdapter}"/>
           </StackPanel>
@@ -261,20 +265,25 @@
         <Grid RowDefinitions="*,Auto" Margin="12,12">
           <DataGrid Grid.Row="0" ItemsSource="{Binding UsbDevices}"
                     SelectedItem="{Binding SelectedUsbDevice}"
-                    AutoGenerateColumns="False" HeadersVisibility="Column">
+                    AutoGenerateColumns="False" HeadersVisibility="Column"
+                    DoubleTapped="OnUsbDoubleTapped">
             <DataGrid.Columns>
-              <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*"/>
-              <DataGridTextColumn Header="VENDOR" Binding="{Binding VendorId}" Width="110">
+              <DataGridTextColumn Header="NAME" Binding="{Binding DisplayName}" Width="*"/>
+              <DataGridTemplateColumn Header="TYPE" Width="140">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate><TextBlock Classes="mono" VerticalAlignment="Center" Text="{Binding DeviceType}"/></DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="DETAILS" Binding="{Binding Summary}" Width="220">
                 <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
               </DataGridTextColumn>
-              <DataGridTextColumn Header="PRODUCT" Binding="{Binding ProductId}" Width="110">
-                <DataGridTextColumn.CellStyleClasses>mono</DataGridTextColumn.CellStyleClasses>
-              </DataGridTextColumn>
-              <DataGridCheckBoxColumn Header="PASSTHROUGH" Binding="{Binding IsPassthrough}" Width="130"/>
+              <DataGridCheckBoxColumn Header="ATTACHED" Binding="{Binding IsPassthrough}" Width="100"/>
             </DataGrid.Columns>
           </DataGrid>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,10,0,0">
-            <Button Classes="tool" Content="Add device" Command="{Binding AddUsbDeviceCommand}"/>
+            <Button Classes="tool" Content="Add device..." Click="OnAddUsbClicked"/>
+            <Button Classes="tool" Content="Edit..." Click="OnEditUsbClicked"
+                    IsEnabled="{Binding HasSelectedUsbDevice}"/>
             <Button Classes="tool danger" Content="Remove" Command="{Binding RemoveUsbDeviceCommand}"
                     CommandParameter="{Binding SelectedUsbDevice}"/>
           </StackPanel>
