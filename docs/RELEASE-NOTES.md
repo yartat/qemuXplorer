@@ -9,6 +9,12 @@ Before tagging, rename that heading to the version and date (`## 1.1.0 (2026-12-
 
 ## Unreleased
 
+### Added
+- **Edit disk:** "Edit..." (or a double-click) in a machine's Storage tab opens a dialog for the selected
+  disk. It changes how the disk attaches and, for local image files, changes the image through `qemu-img`:
+  resize, convert to another format, change or remove the backing file, change qcow2 settings and check or
+  repair. Each format shows only what it supports. The exact commands are shown for confirmation before they run.
+
 ### Fixed
 - Add-disk wizard on Windows: qcow2 "falloc" and "full" preallocation failed with "Unsupported preallocation
   mode" because QEMU on Windows cannot do them. They are no longer offered there (off and metadata remain).

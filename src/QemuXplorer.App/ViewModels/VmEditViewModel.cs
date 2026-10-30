@@ -408,6 +408,22 @@ public partial class VmEditViewModel : ViewModelBase
         Disks.Add(disk);
     }
 
+    public bool HasSelectedDisk => SelectedDisk is not null;
+
+    partial void OnSelectedDiskChanged(DiskDevice? value) => OnPropertyChanged(nameof(HasSelectedDisk));
+
+    /// <summary>
+    /// Swaps in the disk the Edit dialog produced. Disks are plain objects with no change
+    /// notification, so the row is replaced rather than mutated.
+    /// </summary>
+    public void ReplaceDisk(DiskDevice old, DiskDevice replacement)
+    {
+        var index = Disks.IndexOf(old);
+        if (index < 0) return;
+        Disks[index] = replacement;
+        SelectedDisk = replacement;
+    }
+
     [RelayCommand]
     private void RemoveDisk(DiskDevice? disk)
     {

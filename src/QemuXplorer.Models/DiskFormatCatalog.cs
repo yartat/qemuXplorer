@@ -33,6 +33,15 @@ public sealed record DiskFormatInfo(
 {
     public bool NeedsKeySecret => Format == DiskFormat.Luks;
 
+    // What qemu-img can do to an existing image of this format. Measured with qemu-img 11.1:
+    // resize works on raw, qcow2 and qed (qed cannot shrink), "rebase" on qcow2 and qed,
+    // "amend" on qcow2, and "check" on qcow2, qed, vdi, vmdk and vhdx. Everything can be converted.
+    public bool CanResize => Format is DiskFormat.QCow2 or DiskFormat.Raw or DiskFormat.Qed;
+    public bool CanShrink => Format is DiskFormat.QCow2 or DiskFormat.Raw;
+    public bool CanRebase => Format is DiskFormat.QCow2 or DiskFormat.Qed;
+    public bool CanAmend => Format == DiskFormat.QCow2;
+    public bool CanCheck => Format is DiskFormat.QCow2 or DiskFormat.Qed or DiskFormat.Vdi or DiskFormat.Vmdk or DiskFormat.Vhdx;
+
     public override string ToString() => Label;
 }
 
@@ -58,6 +67,17 @@ public static class DiskFormatCatalog
     /// </summary>
     public static IReadOnlyList<string> Qcow2PreallocationModes(bool windows)
         => windows ? ["off", "metadata"] : ["off", "metadata", "falloc", "full"];
+
+    /// <summary>The qcow2 settings <c>qemu-img amend</c> can change on an existing image.</summary>
+    public static IReadOnlyList<ImageOption> Qcow2AmendOptions { get; } =
+    [
+        new("compat", "Compatibility", "v3 (1.1) is current; 0.10 is for ancient QEMU",
+            ImageOptionKind.Choice, Choices: ["1.1", "0.10"]),
+        new("lazy_refcounts", "Lazy refcounts", "Postpone refcount updates: faster, slower crash recovery",
+            ImageOptionKind.Choice, Choices: ["on", "off"]),
+        new("refcount_bits", "Refcount bits", "Width of a reference count entry",
+            ImageOptionKind.Number)
+    ];
 
     public static IReadOnlyList<DiskFormatInfo> All { get; } =
     [

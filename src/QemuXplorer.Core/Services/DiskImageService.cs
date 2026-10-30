@@ -17,6 +17,16 @@ public sealed record DiskCreateRequest(
     IReadOnlyDictionary<string, string>? Options = null,
     string? KeySecretFile = null);
 
+/// <summary>One <c>qemu-img</c> invocation that changes or inspects an existing image.</summary>
+/// <param name="Title">What it does, for the confirmation list.</param>
+/// <param name="OutputPath">A file the command creates (convert); removed again if the command fails.</param>
+/// <param name="Warning">Shown with the confirmation when the operation can lose data.</param>
+public sealed record DiskImageOperation(
+    string Title,
+    IReadOnlyList<string> Arguments,
+    string? Warning = null,
+    string? OutputPath = null);
+
 public sealed class DiskImageService
 {
     private const string LuksSecretId = "sec0";
@@ -70,6 +80,125 @@ public sealed class DiskImageService
 
     // qemu-img option strings use a doubled comma as the escape for a literal comma.
     private static string Escape(string value) => value.Replace(",", ",,");
+
+    /// <summary>
+    /// <c>qemu-img resize</c> to an absolute size. Shrinking needs <c>--shrink</c>, which qemu-img
+    /// insists on because it discards everything past the new end.
+    /// </summary>
+    public static IReadOnlyList<string> BuildResizeArguments(
+        string path, DiskFormat format, long sizeMB, bool shrink, string? preallocation = null)
+    {
+        var args = new List<string> { "resize", "-f", DiskFormatCatalog.QemuName(format) };
+        if (shrink) args.Add("--shrink");
+        if (!string.IsNullOrWhiteSpace(preallocation)) args.Add($"--preallocation={preallocation}");
+        args.Add(path);
+        args.Add($"{sizeMB}M");
+        return args;
+    }
+
+    /// <summary>Copies an image into a new file of another format (or the same one, to compact it).</summary>
+    public static IReadOnlyList<string> BuildConvertArguments(
+        string source, DiskFormat sourceFormat, string destination, DiskFormat destinationFormat,
+        IReadOnlyDictionary<string, string>? options = null)
+    {
+        var args = new List<string>
+        {
+            "convert", "-f", DiskFormatCatalog.QemuName(sourceFormat), "-O", DiskFormatCatalog.QemuName(destinationFormat)
+        };
+        AddOptions(args, options);
+        args.Add(source);
+        args.Add(destination);
+        return args;
+    }
+
+    /// <summary>
+    /// Points an image at another backing file, or with a null <paramref name="backingFile"/> copies
+    /// the backing data in so the image stands alone. Unless <paramref name="unsafeMode"/> is set,
+    /// qemu-img also rewrites clusters so the contents the guest sees stay the same.
+    /// </summary>
+    public static IReadOnlyList<string> BuildRebaseArguments(
+        string path, DiskFormat format, string? backingFile, DiskFormat? backingFormat, bool unsafeMode)
+    {
+        var args = new List<string> { "rebase", "-f", DiskFormatCatalog.QemuName(format) };
+        if (unsafeMode && backingFile is not null) args.Add("-u");
+        args.Add("-b");
+        args.Add(backingFile ?? string.Empty);
+        if (backingFile is not null && backingFormat is { } bf)
+        {
+            args.Add("-F");
+            args.Add(DiskFormatCatalog.QemuName(bf));
+        }
+        args.Add(path);
+        return args;
+    }
+
+    /// <summary>Changes format settings in place (<c>qemu-img amend</c>).</summary>
+    public static IReadOnlyList<string> BuildAmendArguments(
+        string path, DiskFormat format, IReadOnlyDictionary<string, string> options)
+    {
+        var args = new List<string> { "amend", "-f", DiskFormatCatalog.QemuName(format) };
+        AddOptions(args, options);
+        args.Add(path);
+        return args;
+    }
+
+    /// <summary>Checks consistency; <paramref name="repair"/> is <c>leaks</c> or <c>all</c> to also fix.</summary>
+    public static IReadOnlyList<string> BuildCheckArguments(string path, DiskFormat format, string? repair = null)
+    {
+        var args = new List<string> { "check", "-f", DiskFormatCatalog.QemuName(format) };
+        if (!string.IsNullOrWhiteSpace(repair))
+        {
+            args.Add("-r");
+            args.Add(repair);
+        }
+        args.Add(path);
+        return args;
+    }
+
+    private static void AddOptions(List<string> args, IReadOnlyDictionary<string, string>? options)
+    {
+        var parts = (options ?? new Dictionary<string, string>())
+            .Where(o => !string.IsNullOrWhiteSpace(o.Value))
+            .Select(o => $"{o.Key}={Escape(o.Value)}")
+            .ToList();
+        if (parts.Count == 0) return;
+        args.Add("-o");
+        args.Add(string.Join(',', parts));
+    }
+
+    /// <summary>
+    /// Runs one operation and returns what qemu-img printed. A failure throws with qemu-img's own
+    /// message; a file the command was creating is deleted, since it did not exist before.
+    /// </summary>
+    public async Task<string> RunAsync(string qemuImgPath, DiskImageOperation operation, CancellationToken ct = default)
+    {
+        var psi = NewProcess(qemuImgPath);
+        foreach (var arg in operation.Arguments)
+            psi.ArgumentList.Add(arg);
+
+        var succeeded = false;
+        try
+        {
+            using var proc = StartProcess(psi);
+            var stderrTask = proc.StandardError.ReadToEndAsync(ct);
+            var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+            await proc.WaitForExitAsync(ct);
+            var stderr = (await stderrTask).Trim();
+            var stdout = (await stdoutTask).Trim();
+
+            if (proc.ExitCode != 0)
+                throw new InvalidOperationException(
+                    $"qemu-img {operation.Arguments[0]} failed: {(stderr.Length > 0 ? stderr : stdout)}");
+
+            succeeded = true;
+            return stdout.Length > 0 ? stdout : stderr;
+        }
+        finally
+        {
+            if (!succeeded && operation.OutputPath is { } partial)
+                DeletePartialImage(partial);
+        }
+    }
 
     public async Task CreateImageAsync(
         string qemuImgPath,
@@ -174,13 +303,22 @@ public sealed class DiskImageService
         return drivers;
     }
 
+    /// <param name="format">
+    /// The format to open the image as. Pass it whenever it is known: probing misreports a fixed VHD as raw.
+    /// </param>
     public async Task<DiskImageInfo?> GetImageInfoAsync(
         string qemuImgPath,
         string imagePath,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        DiskFormat? format = null)
     {
         var psi = NewProcess(qemuImgPath);
         psi.ArgumentList.Add("info");
+        if (format is { } known)
+        {
+            psi.ArgumentList.Add("-f");
+            psi.ArgumentList.Add(DiskFormatCatalog.QemuName(known));
+        }
         psi.ArgumentList.Add("--output=json");
         psi.ArgumentList.Add(imagePath);
 
@@ -199,7 +337,10 @@ public sealed class DiskImageService
             var actualSize = root.TryGetProperty("actual-size", out var actual) ? actual.GetInt64() : virtualSize;
 
             var fmt = DiskFormatCatalog.FromQemuName(formatStr) ?? DiskFormat.QCow2;
-            return new DiskImageInfo(imagePath, fmt, virtualSize, actualSize);
+            var backing = root.TryGetProperty("full-backing-filename", out var full) ? full.GetString()
+                : root.TryGetProperty("backing-filename", out var rel) ? rel.GetString()
+                : null;
+            return new DiskImageInfo(imagePath, fmt, virtualSize, actualSize, backing);
         }
         catch (Exception ex)
         {

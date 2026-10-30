@@ -8,11 +8,15 @@ public partial class ImageOptionViewModel : ObservableObject
 {
     public const string DefaultChoice = "(default)";
 
-    public ImageOptionViewModel(ImageOption definition)
+    private readonly string _unsetLabel;
+
+    /// <param name="unsetLabel">What the "not set" entry of a choice reads, e.g. "(leave unchanged)" when amending.</param>
+    public ImageOptionViewModel(ImageOption definition, string unsetLabel = DefaultChoice)
     {
         Definition = definition;
+        _unsetLabel = unsetLabel;
         _value = definition.Kind == ImageOptionKind.Bool ? definition.Default : string.Empty;
-        ChoiceItems = definition.Choices is null ? [] : [DefaultChoice, .. definition.Choices];
+        ChoiceItems = definition.Choices is null ? [] : [unsetLabel, .. definition.Choices];
     }
 
     public ImageOption Definition { get; }
@@ -37,8 +41,8 @@ public partial class ImageOptionViewModel : ObservableObject
 
     public string SelectedChoice
     {
-        get => string.IsNullOrEmpty(Value) ? DefaultChoice : Value;
-        set => Value = value == DefaultChoice ? string.Empty : value;
+        get => string.IsNullOrEmpty(Value) ? _unsetLabel : Value;
+        set => Value = value == _unsetLabel ? string.Empty : value;
     }
 
     /// <summary>True when the option should appear on the command line.</summary>

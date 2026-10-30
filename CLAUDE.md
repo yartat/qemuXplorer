@@ -48,8 +48,8 @@ dotnet run --project src/QemuXplorer.App
 ```
 
 The full solution builds clean with zero warnings — keep it that way. `dotnet test` on the
-solution runs both test projects: 215 in Core.Tests (argument builder, machine and disk catalogs,
-disk image, CPU model and CPU description services, repository) and 115 headless UI tests (view loading, window icons, icon files,
+solution runs both test projects: 248 in Core.Tests (argument builder, machine and disk catalogs,
+disk image, CPU model and CPU description services, repository) and 145 headless UI tests (view loading, window icons, icon files,
 machine and CPU pickers, disk wizard, logging).
 
 ## Package management
@@ -261,6 +261,37 @@ attach). It produces a `DiskDevice`; creating a new image runs `qemu-img create`
 - `qemu-img info` without `-f` reports a **fixed VHD as `raw`**, because the VHD footer sits at the
   end. Creation is correct and the app always passes `format=` explicitly, but
   `DiskImageService.GetImageInfoAsync` probes, so it can misreport such a file.
+
+### Editing a disk
+
+"Edit..." (or a double-click on a row) in the Storage tab opens `DiskEditView`. The top half is how the disk
+attaches (interface, cache, boot, read-only, CD-ROM, snapshot); the rest changes the **image file** through
+`qemu-img`, and only offers what that format supports (`DiskFormatInfo.CanResize/CanShrink/CanRebase/CanAmend/CanCheck`,
+measured on QEMU 11.1, pinned by `FormatCapabilities_MatchWhatQemuImgDoes`):
+
+| Operation | Formats |
+|---|---|
+| resize | raw, qcow2, qed (qed cannot shrink); `--shrink` is passed only when the size goes down |
+| convert | all (writes a **new** file, keeps the original; the disk then points at the new file) |
+| rebase / remove backing file | qcow2, qed |
+| amend (`compat`, `lazy_refcounts`, `refcount_bits`) | qcow2 |
+| check, optionally `-r leaks` / `-r all` | qcow2, qed, vdi, vmdk, vhdx |
+
+- **Nothing runs until the exact commands have been shown and confirmed** (stages Editing, Confirming, Running,
+  Done). Commands run in a fixed order: check, amend, rebase, resize, convert (convert last, so it copies the
+  already-changed image). If a step fails, the steps that ran are deselected so a retry does not repeat them,
+  and a half-written convert output is deleted. Cancel is disabled while qemu-img runs: killing it halfway
+  through a resize can damage the image.
+- **The image changes immediately**, even if the machine's own dialog is cancelled afterwards. The review
+  step says so. `qemu-img` refuses an image a running machine holds open; that error is shown as is.
+- **Local, unencrypted files only.** Network disks (NBD/SSH/iSCSI) and LUKS images offer just the attach
+  settings, with a note. LUKS would need `--object secret` plumbing on every command.
+- The dialog works on a copy and returns a new `DiskDevice` (same `Id`, `VmId`, `Index`);
+  `VmEditViewModel.ReplaceDisk` swaps the row, because entities do not notify.
+- `qemu-img info` is called with `-f <format>` (`GetImageInfoAsync(..., format:)`) so a fixed VHD is not read as raw.
+- `Real_*` tests run the actual `qemu-img` and are skipped where it is not installed (`RealQemuImgFact` in
+  Core.Tests, `Assert.SkipUnless` in App.Tests). They are what keeps the capability table honest.
+- Not verified by eye: the dialog's layout has only been loaded headlessly, never looked at on screen.
 
 ## Application icon
 
