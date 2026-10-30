@@ -121,15 +121,16 @@ public class UsbHostServiceTests : IDisposable
     // ---- this machine ----
 
     [WindowsOnlyFact]
-    public async Task Windows_ListingThisComputer_ReturnsDevicesWithoutANote()
+    public async Task Windows_ListingThisComputer_WorksWhateverIsPluggedIn()
     {
+        // A build server is a virtual machine and may have no USB devices at all, so the number of devices is
+        // not asserted: only that PowerShell ran and parsed (an empty Note), and that what it found is sane.
         var sut = new UsbHostService(NullLogger<UsbHostService>.Instance);
 
         var listing = await sut.ListAsync();
 
         listing.Note.Should().BeEmpty();
-        listing.Devices.Should().NotBeEmpty();
-        listing.Devices.Should().OnlyContain(d => d.VendorId != 0);
+        listing.Devices.Should().OnlyContain(d => d.VendorId != 0 && d.Name.Length > 0);
     }
 }
 
