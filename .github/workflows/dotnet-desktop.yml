@@ -60,6 +60,7 @@ jobs:
   # Version: the tag without its "v" for a release, 1.0.<run number> for any other push.
 
   windows:
+    if: startsWith(github.ref, 'refs/tags/v')
     name: Windows ${{ matrix.arch }}
     needs: build
     runs-on: windows-latest
@@ -107,11 +108,9 @@ jobs:
     # The installer is only built for a release: installing NSIS and compressing the installer is the
     # slowest part of this job, and the zip and the portable exe already show that the publish works.
     - name: Install NSIS
-      if: startsWith(github.ref, 'refs/tags/v')
       run: choco install nsis --no-progress -y
 
     - name: Build installer
-      if: startsWith(github.ref, 'refs/tags/v')
       run: |
         v='${{ steps.ver.outputs.version }}'
         a='${{ matrix.arch }}'
@@ -130,6 +129,7 @@ jobs:
         if-no-files-found: error
 
   linux:
+    if: startsWith(github.ref, 'refs/tags/v')
     name: Linux deb (${{ matrix.arch }})
     needs: build
     runs-on: ubuntu-latest
@@ -170,6 +170,7 @@ jobs:
         if-no-files-found: error
 
   macos:
+    if: startsWith(github.ref, 'refs/tags/v')
     name: macOS app (${{ matrix.rid }})
     needs: build
     runs-on: macos-latest
